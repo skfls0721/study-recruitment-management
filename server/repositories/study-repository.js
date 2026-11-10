@@ -1,7 +1,9 @@
 export function createStudyRepository(db) {
   return {
     db,
-    study(id) { return db.prepare('SELECT * FROM studies WHERE id=?').get(id); },
+    study(id) { return db.prepare(`SELECT s.*,u.display_name AS owner_name,
+      (SELECT COUNT(*) FROM study_members m WHERE m.study_id=s.id) AS member_count
+      FROM studies s JOIN users u ON u.id=s.owner_id WHERE s.id=?`).get(id); },
     studies({search='',sort='latest'}={}) {
       const order = {latest:'s.created_at DESC,s.id DESC', deadline:'s.deadline ASC,s.id ASC', title:'s.title COLLATE NOCASE ASC,s.id ASC'}[sort] || 's.created_at DESC,s.id DESC';
       return db.prepare(`SELECT s.*,u.display_name AS owner_name,

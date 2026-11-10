@@ -1,6 +1,7 @@
-import { rmSync } from 'node:fs';
+import { rmSync, existsSync } from 'node:fs';
 import { openDb } from './index.js';
 import bcrypt from 'bcryptjs';
+if (process.env.NODE_ENV !== 'test' && existsSync('.env')) process.loadEnvFile('.env');
 const path=process.env.DB_PATH||'./data/studyboard.sqlite';
 try{rmSync(path,{force:true});}catch{}
 const db=openDb(path);

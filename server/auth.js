@@ -17,8 +17,9 @@ export function createAuth(db,secret) {
     },
     middleware(req,res,next) {
       const h=req.get('Authorization')||'';if(!h.startsWith('Bearer '))return next(new AppError(401,'TOKEN_REQUIRED','로그인이 필요합니다.'));
-      try {const p=jwt.verify(h.slice(7),secret,{algorithms:['HS256'],issuer:'studyboard',audience:'studyboard-users'});const u=db.prepare('SELECT * FROM users WHERE id=?').get(Number(p.sub));if(!u)throw Error('missing');req.user=publicUser(u);next();}
-      catch {next(new AppError(401,'INVALID_TOKEN','로그인이 만료되었거나 유효하지 않습니다.'));}
+      try {const p=jwt.verify(h.slice(7),secret,{algorithms:['HS256'],issuer:'studyboard',audience:'studyboard-users'});const u=db.prepare('SELECT * FROM users WHERE id=?').get(Number(p.sub));if(!u)throw Error('missing');req.user=publicUser(u);}
+      catch {return next(new AppError(401,'INVALID_TOKEN','로그인이 만료되었거나 유효하지 않습니다.'));}
+      next();
     }
   };
 }

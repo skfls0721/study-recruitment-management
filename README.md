@@ -27,7 +27,6 @@ npm start
 | `PORT` | HTTP 포트 (기본값 3000) |
 | `JWT_SECRET` | JWT 서명 비밀키. 배포 환경에서 반드시 설정 |
 | `DB_PATH` | SQLite 파일 경로 (기본값 `./data/studyboard.sqlite`) |
-| `CLIENT_ORIGIN` | 추후 별도 프런트엔드 배포 시 허용 origin |
 
 ## 초기 데이터
 
@@ -46,8 +45,8 @@ npm start
 
 - 설계 및 규칙: [`docs/design.md`](docs/design.md)
 - API 개요: [`docs/API.md`](docs/API.md)
-- 보고서 초안: [`docs/report.md`](docs/report.md)
+- 보고서 초안: [`docs/report.md`](docs/report.md), [`docs/report.pdf`](docs/report.pdf)
 - 이전 과제 재사용·AI 활용 기록: [`docs/usage-log.md`](docs/usage-log.md)
 - 테스트와 화면 확인 기록: [`docs/verification.md`](docs/verification.md)
 
-JCloud 배포, 외부 네트워크 접속, 화면 캡처와 시연 영상은 아직 수행되지 않았습니다. 최종 제출 전 실제 결과와 `docs/report.pdf`를 추가해야 합니다.
+JCloud 배포, 외부 네트워크 접속, 실제 브라우저 캡처와 시연 영상은 아직 수행되지 않았습니다. 현재 보고서 PDF는 미완료 작업을 표시한 초안이며, 실제 결과를 반영해 갱신해야 합니다.
