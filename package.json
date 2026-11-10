@@ -1,0 +1,10 @@
+{
+  "name": "studyboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": { "start": "node server/server.js", "dev": "node --watch server/server.js", "test": "vitest run", "db:reset": "node server/db/reset.js" },
+  "dependencies": { "bcryptjs": "^3.0.2", "express": "^5.1.0", "jsonwebtoken": "^9.0.3" },
+  "devDependencies": { "supertest": "^7.1.4", "vitest": "^3.2.4" }
+}

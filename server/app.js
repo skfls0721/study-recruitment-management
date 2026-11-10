@@ -1,0 +1,34 @@
+import express from 'express';
+import { fileURLToPath } from 'node:url';
+import { createStudyRepository } from './repositories/study-repository.js';
+import { createStudyService } from './services/study-service.js';
+import { createAuth } from './auth.js';
+import { AppError, bad, forbidden, missing } from './errors.js';
+const id=(v)=>{if(!/^[1-9]\d*$/.test(String(v))||!Number.isSafeInteger(Number(v)))throw bad('식별자 형식이 올바르지 않습니다.');return Number(v);};
+export function createApp({db,secret=process.env.JWT_SECRET||'local-only-secret-change-before-deploy'}) {
+  const app=express(),repo=createStudyRepository(db),service=createStudyService(repo),auth=createAuth(db,secret);
+  app.disable('x-powered-by');app.use(express.json({limit:'16kb'}));app.use((_q,r,n)=>{r.set('Cache-Control','no-store');n();});
+  app.get('/api/health',(_q,r)=>r.json({status:'ok'}));
+  app.post('/api/auth/signup',(q,r)=>r.status(201).json(auth.signup(q.body)));
+  app.post('/api/auth/login',(q,r)=>r.json(auth.login(q.body)));
+  app.get('/api/studies',(q,r)=>{const search=String(q.query.search||'').trim().slice(0,100),sort=String(q.query.sort||'latest');r.json(repo.studies({search,sort}));});
+  app.get('/api/studies/:id',(q,r)=>{const s=repo.study(id(q.params.id));if(!s)throw missing('모집글');r.json({...s,applications:(q.user?.id===s.owner_id?repo.forStudy(s.id):undefined)});});
+  app.post('/api/studies',auth.middleware,(q,r)=>r.status(201).json(service.createStudy(q.user,q.body)));
+  app.patch('/api/studies/:id/status',auth.middleware,(q,r)=>r.json(service.changeStudyStatus(q.user,id(q.params.id),q.body?.status)));
+  app.delete('/api/studies/:id',auth.middleware,(q,r)=>r.json(service.deleteStudy(q.user,id(q.params.id))));
+  app.post('/api/studies/:id/applications',auth.middleware,(q,r)=>r.status(201).json(service.apply(q.user,id(q.params.id))));
+  app.get('/api/studies/:id/applications',auth.middleware,(q,r)=>{const s=repo.study(id(q.params.id));if(!s)throw missing('모집글');if(s.owner_id!==q.user.id)throw forbidden();r.json(repo.forStudy(s.id));});
+  for(const action of ['approve','reject'])app.patch(`/api/applications/:id/${action}`,auth.middleware,(q,r)=>r.json(service.decide(q.user,id(q.params.id),action)));
+  app.patch('/api/applications/:id/cancel',auth.middleware,(q,r)=>r.json(service.cancelApplication(q.user,id(q.params.id))));
+  app.patch('/api/applications/:id/withdraw',auth.middleware,(q,r)=>r.json(service.withdraw(q.user,id(q.params.id))));
+  app.get('/api/applications/mine',auth.middleware,(q,r)=>r.json(repo.myApplications(q.user.id)));
+  app.get('/api/studies/:id/tasks',auth.middleware,(q,r)=>{const s=repo.study(id(q.params.id));if(!s)throw missing('스터디');if(s.owner_id!==q.user.id&&!repo.isMember(s.id,q.user.id))throw forbidden();r.json(repo.tasks(s.id));});
+  app.post('/api/studies/:id/tasks',auth.middleware,(q,r)=>r.status(201).json(service.createTask(q.user,id(q.params.id),q.body)));
+  app.patch('/api/tasks/:id/status',auth.middleware,(q,r)=>r.json(service.updateTask(q.user,id(q.params.id),q.body?.status)));
+  app.delete('/api/tasks/:id',auth.middleware,(q,r)=>r.json(service.deleteTask(q.user,id(q.params.id))));
+  app.get('/api/studies/:id/progress',auth.middleware,(q,r)=>{const studyId=id(q.params.id);if(!repo.isMember(studyId,q.user.id)&&repo.study(studyId)?.owner_id!==q.user.id)throw forbidden();r.json(service.progress(studyId));});
+  app.use('/api',(q,r)=>r.status(404).json({code:'NOT_FOUND',message:'API를 찾을 수 없습니다.'}));
+  app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));
+  app.use((err,q,r,n)=>{if(err.type==='entity.parse.failed')err=bad('JSON 형식이 올바르지 않습니다.');const status=err instanceof AppError?err.status:500;if(status===500)console.error(err);r.status(status).json({code:status===500?'INTERNAL_ERROR':err.code,message:status===500?'서버에서 처리하지 못했습니다.':err.message});});
+  return app;
+}
