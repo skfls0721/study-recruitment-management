@@ -49,5 +49,6 @@ npm start
 - 보고서 초안: [`docs/report.md`](docs/report.md), [`docs/report.pdf`](docs/report.pdf)
 - 이전 과제 재사용·AI 활용 기록: [`docs/usage-log.md`](docs/usage-log.md)
 - 테스트와 화면 확인 기록: [`docs/verification.md`](docs/verification.md)
+- 전북대 JCloud 배포 체크리스트: [`docs/jcloud-deployment.md`](docs/jcloud-deployment.md)
 
 JCloud 배포, 외부 네트워크 접속, 실제 브라우저 캡처와 시연 영상은 아직 수행되지 않았습니다. 현재 보고서 PDF는 미완료 작업을 표시한 초안이며, 실제 결과를 반영해 갱신해야 합니다.
