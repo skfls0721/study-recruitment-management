@@ -13,7 +13,7 @@ export function createStudyRepository(db) {
     },
     application(id) { return db.prepare('SELECT * FROM applications WHERE id=?').get(id); },
     forStudy(studyId) { return db.prepare(`SELECT a.*,u.display_name FROM applications a JOIN users u ON u.id=a.user_id WHERE a.study_id=? ORDER BY a.id`).all(studyId); },
-    myApplications(userId) { return db.prepare(`SELECT a.*,s.title AS study_title,s.status AS study_status FROM applications a JOIN studies s ON s.id=a.study_id WHERE a.user_id=? ORDER BY a.id DESC`).all(userId); },
+    myApplications(userId) { return db.prepare(`SELECT a.*,s.title AS study_title,s.status AS study_status,s.deadline AS study_deadline FROM applications a JOIN studies s ON s.id=a.study_id WHERE a.user_id=? ORDER BY a.id DESC`).all(userId); },
     isMember(studyId,userId) { return !!db.prepare('SELECT 1 FROM study_members WHERE study_id=? AND user_id=?').get(studyId,userId); },
     memberCount(studyId) { return db.prepare('SELECT COUNT(*) AS n FROM study_members WHERE study_id=?').get(studyId).n; },
     tasks(studyId) { return db.prepare('SELECT t.*,u.display_name AS assignee_name FROM tasks t JOIN users u ON u.id=t.assignee_id WHERE t.study_id=? ORDER BY t.id').all(studyId); },
