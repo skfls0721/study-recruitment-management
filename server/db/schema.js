@@ -23,11 +23,30 @@ export function initialize(db) {
     );
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY, study_id INTEGER NOT NULL REFERENCES studies(id), title TEXT NOT NULL,
-      assignee_id INTEGER NOT NULL REFERENCES users(id), status TEXT NOT NULL DEFAULT 'todo'
+      assignee_id INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'todo'
         CHECK(status IN ('todo','doing','done')), due_date TEXT, archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_studies_status ON studies(status);
     CREATE INDEX IF NOT EXISTS idx_applications_study ON applications(study_id,status);
     CREATE INDEX IF NOT EXISTS idx_tasks_study ON tasks(study_id,status);`);
+  const assignee = db.prepare('PRAGMA table_info(tasks)').all().find(column=>column.name==='assignee_id');
+  if(assignee?.notnull){
+    db.exec('BEGIN IMMEDIATE');
+    try{
+      db.exec(`DROP INDEX IF EXISTS idx_tasks_study;
+        ALTER TABLE tasks RENAME TO tasks_before_nullable_assignee;
+        CREATE TABLE tasks (
+          id INTEGER PRIMARY KEY, study_id INTEGER NOT NULL REFERENCES studies(id), title TEXT NOT NULL,
+          assignee_id INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'todo'
+            CHECK(status IN ('todo','doing','done')), due_date TEXT, archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO tasks(id,study_id,title,assignee_id,status,due_date,archived,created_at)
+          SELECT id,study_id,title,assignee_id,status,due_date,archived,created_at FROM tasks_before_nullable_assignee;
+        DROP TABLE tasks_before_nullable_assignee;
+        CREATE INDEX idx_tasks_study ON tasks(study_id,status);`);
+      db.exec('COMMIT');
+    }catch(error){try{db.exec('ROLLBACK')}catch{}throw error;}
+  }
 }
