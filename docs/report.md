@@ -32,7 +32,7 @@ Node.js 24, Express, SQLite, HTML/CSS/JavaScript 화면, JWT, bcryptjs를 사용
 
 2026-11-18 기준 깨끗한 설치 후 `npm ci && npm test`에서 Vitest 5.1.0 + Supertest **23개 테스트가 모두 통과**했습니다. `npm audit --omit=dev`는 취약점 0건입니다. 전체 감사는 개발 도구의 `picomatch` 관련 고위험 6건을 보고하며 현재 패치 버전이 없습니다. 이 경로는 서비스 런타임 의존성이 아닙니다. 검증에는 401·403·409·400·413 오류, 비밀번호 해시·중복 가입, 위조 토큰·사용자 ID, 정원 초과 승인, 트랜잭션 롤백, 취소 후 재지원, 작업 권한·진행률과 DB 마이그레이션이 포함됩니다. 전체 결과는 [검증 기록](verification.md)에 있습니다.
 
-JCloud의 `studyboard.service`가 enabled/active이고, 내부 `/api/health`는 `{"status":"ok"}`를 반환합니다. `JWT_SECRET` 설정 여부, 영속 DB 경로, 파일 존재, 데모 계정 존재도 값 노출 없이 확인했습니다. 공개 접속 주소는 [http://s.jedutools.io:40141](http://s.jedutools.io:40141)이며 사용자가 화면 표시와 로그인을 확인했습니다. 다른 네트워크에서의 전체 등록→지원→승인 흐름, 최신 화면 캡처·영상, 콘솔·Network 탭 확인은 아직 남아 있습니다. 동시 승인 테스트는 동기식 SQLite 호출 특성상 실제 다중 프로세스 경합을 검증하지 않는 한계가 있습니다.
+JCloud의 `studyboard.service`가 enabled/active이고, 내부 `/api/health`는 `{"status":"ok"}`를 반환합니다. `JWT_SECRET` 설정 여부, 영속 DB 경로, 파일 존재, 데모 계정 존재도 값 노출 없이 확인했습니다. 공개 접속 주소는 [http://s.jedutools.io:40141](http://s.jedutools.io:40141)이며 비로그인 첫 진입은 로그인 화면으로 연결되도록 수정했습니다. 다른 네트워크에서의 전체 등록→지원→승인 흐름, 최신 화면 캡처·영상, 콘솔·Network 탭 확인은 아직 남아 있습니다. 동시 승인 테스트는 동기식 SQLite 호출 특성상 실제 다중 프로세스 경합을 검증하지 않는 한계가 있습니다.
 
 초기화 스크립트에는 정원 1명·대기 지원 2건인 정원 초과 시연 스터디와 라이브 지원용 모집글이 포함됩니다. `npm run db:reset`은 기존 DB를 삭제하므로 운영 서버에서 실행하지 않았습니다. 기존 데모 계정이 있는 운영 DB에는 기존 데이터를 보존하는 `npm run db:seed:demo`를 사용할 수 있습니다.
 

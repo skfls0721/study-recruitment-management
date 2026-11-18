@@ -12,7 +12,7 @@ function page(name,{push=true,id=null}={}){const route={page:name,...(id===null?
 function goBack(fallback){if(routeDepth>0)history.back();else page(fallback);}
 $$('[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page));
 $$('[data-back]').forEach(b=>b.onclick=()=>goBack(b.dataset.back));
-function parseRoute(hash=location.hash){const parts=hash.replace(/^#/,'').split('/');if(['studies','mine','login'].includes(parts[0])&&parts.length===1)return{page:parts[0]};if(['detail','room'].includes(parts[0])&&parts.length===2&&/^[1-9]\d*$/.test(parts[1]))return{page:parts[0],id:Number(parts[1])};return{page:'studies',invalid:!!hash&&hash!=='#studies'};}
+function parseRoute(hash=location.hash){if(!hash)return{page:me?'studies':'login'};const parts=hash.replace(/^#/,'').split('/');if(['studies','mine','login'].includes(parts[0])&&parts.length===1)return{page:parts[0]};if(['detail','room'].includes(parts[0])&&parts.length===2&&/^[1-9]\d*$/.test(parts[1]))return{page:parts[0],id:Number(parts[1])};return{page:'studies',invalid:!!hash&&hash!=='#studies'};}
 const initialRoute=parseRoute();
 history.replaceState({studyboard:true,route:{page:'studies'},depth:0,guard:true},'','#studies');
 routeDepth=1;history.pushState({studyboard:true,route:initialRoute,depth:routeDepth},'',`#${initialRoute.page}${initialRoute.id?`/${initialRoute.id}`:''}`);
