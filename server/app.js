@@ -30,9 +30,9 @@ export function createApp({db,secret=process.env.JWT_SECRET||'local-only-secret-
   app.post('/api/studies/:id/tasks',auth.middleware,(q,r)=>r.status(201).json(service.createTask(q.user,id(q.params.id),q.body)));
   app.patch('/api/tasks/:id/status',auth.middleware,(q,r)=>r.json(service.updateTask(q.user,id(q.params.id),q.body?.status)));
   app.delete('/api/tasks/:id',auth.middleware,(q,r)=>r.json(service.deleteTask(q.user,id(q.params.id))));
-  app.get('/api/studies/:id/progress',auth.middleware,(q,r)=>{const studyId=id(q.params.id);if(!repo.isMember(studyId,q.user.id)&&repo.study(studyId)?.owner_id!==q.user.id)throw forbidden();r.json(service.progress(studyId));});
+  app.get('/api/studies/:id/progress',auth.middleware,(q,r)=>{const studyId=id(q.params.id),s=repo.study(studyId);if(!s)throw missing('스터디');if(!repo.isMember(studyId,q.user.id)&&s.owner_id!==q.user.id)throw forbidden();r.json(service.progress(studyId));});
   app.use('/api',(q,r)=>r.status(404).json({code:'NOT_FOUND',message:'API를 찾을 수 없습니다.'}));
   app.use(express.static(fileURLToPath(new URL('../client',import.meta.url))));
-  app.use((err,q,r,n)=>{if(err.type==='entity.parse.failed')err=bad('JSON 형식이 올바르지 않습니다.');const status=err instanceof AppError?err.status:500;if(status===500)console.error(err);r.status(status).json({code:status===500?'INTERNAL_ERROR':err.code,message:status===500?'서버에서 처리하지 못했습니다.':err.message});});
+  app.use((err,q,r,n)=>{if(err.type==='entity.parse.failed')err=bad('JSON 형식이 올바르지 않습니다.');else if(err.type==='entity.too.large')err=new AppError(413,'PAYLOAD_TOO_LARGE','요청 데이터가 너무 큽니다.');const status=err instanceof AppError?err.status:500;if(status===500)console.error(err);r.status(status).json({code:status===500?'INTERNAL_ERROR':err.code,message:status===500?'서버에서 처리하지 못했습니다.':err.message});});
   return app;
 }

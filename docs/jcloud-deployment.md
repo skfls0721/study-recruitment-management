@@ -2,11 +2,14 @@
 
 ## 현재 배포
 
-2026-11-12 사용자가 확인한 인스턴스는 `202323035`이며 Ubuntu 24.04, `micro` 사양입니다. 앱은 systemd의 `studyboard.service`로 실행하고 내부 포트 3000을 사용합니다. JCloud 세부 정보에 표시된 공개 포트 매핑은 `s.jedutools.io:40141` → 내부 3000입니다. 유동 IP 할당은 계정 정책에서 거절되어 사용하지 않습니다.
+2026-11-18 확인한 인스턴스는 `202323035`이며 Ubuntu 24.04, `micro` 사양입니다. 앱은 systemd의 `studyboard.service`로 실행하고 내부 포트 3000을 사용합니다. 서비스는 `enabled` 및 `active`이며 JCloud의 공개 포트 매핑은 `s.jedutools.io:40141` → 내부 3000입니다. 유동 IP 할당은 계정 정책에서 거절되어 사용하지 않습니다.
 
 - 공개 URL: <http://s.jedutools.io:40141>
 - 상태 확인: `curl http://127.0.0.1:3000/api/health` → `{"status":"ok"}`
-- 서비스: `studyboard.service` 활성 상태 확인
+- 서비스: systemd `studyboard.service` enabled/active, 최신 코드 배포 후 재시작 확인
+- 비밀키: `.env`에서 `JWT_SECRET` 설정 여부 확인(값은 노출하지 않음); 서버 시작 시 미설정이면 종료
+- DB: `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`, 파일 존재 확인. 서비스 재시작 뒤 데모 데이터 유지 확인
+- 계정·시연글: `leaderA`, `leaderB`, `memberC` 계정 및 시연 스터디가 배포 DB에 존재
 - 사용자 수동 확인: 공개 화면 표시 및 로그인 성공
 
 SSH 접속 키는 사용자 기기에만 보관합니다. 개인 키 내용은 저장소·문서·채팅에 기록하지 않습니다.
@@ -22,7 +25,7 @@ npm ci
 cp .env.example .env
 ```
 
-`.env`에 운영용 `JWT_SECRET` 및 DB 경로를 설정하고 파일 권한을 제한합니다. 운영 서비스는 systemd에서 `/usr/bin/node server/server.js`를 실행합니다. 앱은 `0.0.0.0:3000`에서 요청을 받습니다. 외부 주소는 JCloud가 표시한 포트 전달 주소를 사용합니다.
+`.env`에 운영용 `JWT_SECRET` 및 DB 경로를 설정하고 파일 권한을 제한합니다. 서버는 `JWT_SECRET` 없이는 시작하지 않습니다. 운영 서비스는 systemd에서 `/usr/bin/node server/server.js`를 실행합니다. 앱은 `0.0.0.0:3000`에서 요청을 받습니다. 프런트엔드 API는 `/api` 상대 경로를 사용하므로 배포 주소의 같은 origin으로 요청합니다.
 
 ## 데이터와 시연
 
@@ -32,10 +35,12 @@ cp .env.example .env
 
 - [x] 인스턴스 생성 및 SSH 접속
 - [x] 앱 의존성 설치와 systemd 서비스 실행
-- [x] 최신 커밋 배포, 서버 자동 테스트 19개 통과, systemd 재시작
+- [x] 최신 커밋 배포, 서버 자동 테스트 23개 통과, systemd 재시작
 - [x] 내부 health 확인
 - [x] 공개 주소에서 화면 표시와 로그인 확인
-- [ ] 최신 코드 배포 후 다른 네트워크에서 지원→승인→작업 변경 전체 흐름 재확인
+- [ ] 다른 네트워크에서 모집글 등록→지원→승인→작업 변경 전체 흐름 재확인
+- [ ] Network/Console 탭에서 배포 origin 사용과 404·500·CORS 오류 여부 캡처
+- [ ] Wi-Fi를 끈 휴대폰에서 공개 페이지 접속 확인
 - [ ] 시연 캡처·영상 촬영, 테스트 계정·접속 순서 정리
 - [ ] 채점 기간 동안 URL과 서비스 유지 여부 최종 확인
 

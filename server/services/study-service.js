@@ -11,7 +11,7 @@ export function createStudyService(repo) {
   return {
     createStudy(user,input) {
       const title=String(input?.title||'').trim(), description=String(input?.description||'').trim(), capacity=Number(input?.capacity), deadline=String(input?.deadline||'');
-      if(!title||title.length>100||!Number.isSafeInteger(capacity)||capacity<1||capacity>100||!validDate(deadline)||deadline<new Date().toISOString().slice(0,10))throw bad('제목(100자 이하), 정원(1~100명), 미래 마감일을 확인해 주세요.');
+      if(!title||title.length>100||description.length>1000||!Number.isSafeInteger(capacity)||capacity<1||capacity>100||!validDate(deadline)||deadline<new Date().toISOString().slice(0,10))throw bad('제목(100자 이하), 소개(1000자 이하), 정원(1~100명), 미래 마감일을 확인해 주세요.');
       const r=db.prepare('INSERT INTO studies(owner_id,title,description,capacity,deadline) VALUES(?,?,?,?,?)').run(user.id,title,description,capacity,deadline);
       return repo.study(Number(r.lastInsertRowid));
     },
