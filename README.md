@@ -10,6 +10,12 @@
 
 ## 실행
 
+### 배포된 서비스 검토
+
+JCloud 공개 서비스: [http://s.jedutools.io:40141](http://s.jedutools.io:40141)
+
+아래 명령은 로컬에서 개발하거나 실행할 때 사용하는 방법입니다.
+
 ```sh
 npm ci
 cp .env.example .env
