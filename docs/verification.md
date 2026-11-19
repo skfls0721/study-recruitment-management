@@ -70,8 +70,8 @@
 - 정원이 차도 스터디 상태를 자동으로 마감하지 않습니다. 모집글은 기존 상태를 유지하고 남은 대기 지원서는 PENDING으로 둡니다. 승인 시 정원을 다시 검사해 초과분에 409를 반환합니다.
 - 거절된 지원서는 재지원할 수 없습니다. 지원자가 직접 취소한 PENDING만 모집 기간 중 같은 행으로 재지원할 수 있습니다.
 - 작업 `todo`는 삭제되고 `doing`·`done`은 보관됩니다. 보관된 행은 작업 목록에 보관 표시로 남고, 보관 완료 작업은 진행률에 포함됩니다. 작업 상태 변경은 담당자나 스터디장, 삭제·보관은 해당 스터디 멤버나 스터디장이 할 수 있습니다.
-- 실제 모바일 데이터망 접속, 전체 화면 흐름의 최신 브라우저 캡처, 콘솔·Network 탭 캡처, 시연 영상은 아직 제출 기록으로 저장하지 않았습니다. 사용자는 이전에 공개 화면과 로그인을 확인했습니다.
+- 배포 브라우저에서 390px 폭을 모의해 로그인·목록을 눈으로 확인했습니다. 비로그인 등록 폼은 숨겨지고 화면 가로 넘침과 Console 오류가 없었습니다. 실제 휴대폰 데이터망, 로그인한 역할별 전체 흐름, Network 탭 캡처, 화면 캡처와 시연 영상은 아직 제출 기록으로 남기지 않았습니다.
 
 ## JCloud 확인
 
-2026-11-18 서버에서 `studyboard.service`가 enabled/active인지, `/api/health`가 `{"status":"ok"}`인지 확인했습니다. 서버 `.env`에 `JWT_SECRET`이 설정되어 있는지는 값 노출 없이 Boolean만 확인했습니다. DB 경로는 `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`이며 파일과 `leaderA`, `leaderB`, `memberC` 계정이 존재합니다. 서비스를 재시작한 뒤에도 DB·시연 글이 남아 있었습니다. 별도 컴퓨터나 Wi-Fi를 끈 휴대폰에서의 전체 등록→지원→승인 흐름은 사용자가 마지막으로 확인해야 합니다.
+2026-11-19 서버에서 `studyboard.service`가 enabled/active인지, `/api/health`가 `{"status":"ok"}`인지 확인했습니다. 서버 `.env`에 `JWT_SECRET`이 설정되어 있는지는 값 노출 없이 Boolean만 확인했습니다. DB 경로는 `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`이며 파일과 `leaderA`, `leaderB`, `memberC` 계정이 존재합니다. 서비스를 재시작한 뒤에도 DB·시연 글이 남아 있었습니다. 별도 휴대폰 데이터망에서의 전체 등록→지원→승인 흐름은 사용자가 마지막으로 확인해야 합니다.
