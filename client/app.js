@@ -238,6 +238,10 @@ function defaultDeadline() {
   deadline.setDate(deadline.getDate() + 28);
   return deadline.toISOString().slice(0, 10);
 }
+function updateTitleCount() {
+  $('#titleCount').textContent = `${$('#studyTitle').value.length}/100자`;
+}
+$('#studyTitle').addEventListener('input', updateTitleCount);
 
 async function loadStudies() {
   try {
@@ -245,7 +249,7 @@ async function loadStudies() {
     const studies = await api(`/studies?search=${encodeURIComponent(filters.search || '')}&sort=${filters.sort || 'latest'}`);
     if (!studies.length) {
       const hasSearch = Boolean(filters.search?.trim());
-      $('#studyList').innerHTML = `<div class="emptyState"><p>${hasSearch ? '검색 결과가 없습니다.' : '아직 모집글이 없습니다.'}</p><p>${hasSearch ? '검색어를 바꾸거나 검색을 초기화해 보세요.' : '첫 스터디 모집을 시작해 보세요.'}</p>${hasSearch ? '<button type="button" id="clearSearch" class="buttonSecondary">검색 초기화</button>' : (me ? '<button type="button" id="emptyCreateStudy">모집글 쓰기</button>' : '')}</div>`;
+      $('#studyList').innerHTML = `<div class="emptyState"><p>${hasSearch ? '검색 결과가 없습니다.' : '아직 모집글이 없습니다.'}</p><p>${hasSearch ? '검색어를 바꾸거나 검색을 초기화해 보세요.' : '첫 스터디 모집을 시작해 보세요.'}</p>${hasSearch ? '<button type="button" id="clearSearch" class="buttonSecondary">검색 초기화</button>' : (me ? '<button type="button" id="emptyCreateStudy">모집글 작성</button>' : '')}</div>`;
       $('#clearSearch')?.addEventListener('click', () => { $('#searchForm').reset(); loadStudies(); });
       $('#emptyCreateStudy')?.addEventListener('click', () => navigate('new'));
       return;
@@ -272,12 +276,12 @@ async function loadStudyForm(id = null) {
   formErrors(form);
   form.dataset.studyId = id || '';
   form.dataset.mode = id ? 'edit' : 'new';
-  $('#studyFormHeading').textContent = id ? '모집글 수정' : '모집글 쓰기';
+  $('#studyFormHeading').textContent = id ? '모집글 수정' : '모집글 작성';
   $('#saveStudyButton').textContent = id ? '수정 저장' : '모집글 등록';
   $('#studyCapacity').value = id ? '' : '3';
   $('#studyDeadline').min = today();
   $('#studyDeadline').value = defaultDeadline();
-  if (!id) return;
+  if (!id) { updateTitleCount(); return; }
   try {
     const study = await api(`/studies/${id}`);
     if (!me || me.id !== study.owner_id || study.status !== 'RECRUITING') {
@@ -289,6 +293,7 @@ async function loadStudyForm(id = null) {
     $('#studyDescription').value = study.description || '';
     $('#studyCapacity').value = study.capacity;
     $('#studyDeadline').value = study.deadline;
+    updateTitleCount();
   } catch (error) {
     showFormError(form, error);
   }

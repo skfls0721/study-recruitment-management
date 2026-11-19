@@ -75,11 +75,12 @@
     <section id="studyFormPage" class="page" hidden>
       <button class="textButton" type="button" data-back="studies">← 모집글 목록</button>
       <p class="eyebrow">모집 정보</p>
-      <h1 id="studyFormHeading">모집글 쓰기</h1>
+      <h1 id="studyFormHeading">모집글 작성</h1>
       <form id="studyForm" class="card studyForm" novalidate>
         <label for="studyTitle">제목 <span class="requiredMark">필수</span></label>
-        <input id="studyTitle" name="title" required maxlength="100" aria-describedby="titleHelp">
+        <input id="studyTitle" name="title" required maxlength="100" aria-describedby="titleHelp titleCount">
         <small id="titleHelp" class="helpText">100자 이내로 입력하세요.</small>
+        <small id="titleCount" class="helpText" aria-live="polite">0/100자</small>
         <p class="fieldError" data-error-for="title"></p>
 
         <label for="studyDescription">소개</label>
@@ -94,7 +95,7 @@
 
         <label for="studyDeadline">모집 마감일 <span class="requiredMark">필수</span></label>
         <input id="studyDeadline" name="deadline" type="date" required aria-describedby="deadlineHelp">
-        <small id="deadlineHelp" class="helpText">오늘 이후 날짜를 선택하세요.</small>
+        <small id="deadlineHelp" class="helpText">오늘 또는 그 이후 날짜를 선택하세요.</small>
         <p class="fieldError" data-error-for="deadline"></p>
         <p class="fieldError formError" data-error-for="form" role="alert"></p>
         <div class="formActions">
