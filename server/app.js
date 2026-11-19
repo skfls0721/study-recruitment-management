@@ -15,6 +15,7 @@ export function createApp({db,secret=process.env.JWT_SECRET||'local-only-secret-
   app.get('/api/studies/:id',(q,r)=>{const s=repo.study(id(q.params.id));if(!s)throw missing('모집글');r.json({...s,applications:(q.user?.id===s.owner_id?repo.forStudy(s.id):undefined)});});
   app.get('/api/studies/:id/members',auth.middleware,(q,r)=>{const studyId=id(q.params.id),s=repo.study(studyId);if(!s)throw missing('스터디');if(s.owner_id!==q.user.id&&!repo.isMember(studyId,q.user.id))throw forbidden();r.json(repo.members(studyId));});
   app.post('/api/studies',auth.middleware,(q,r)=>r.status(201).json(service.createStudy(q.user,q.body)));
+  app.patch('/api/studies/:id',auth.middleware,(q,r)=>r.json(service.updateStudy(q.user,id(q.params.id),q.body)));
   app.patch('/api/studies/:id/status',auth.middleware,(q,r)=>r.json(service.changeStudyStatus(q.user,id(q.params.id),q.body?.status)));
   app.delete('/api/studies/:id',auth.middleware,(q,r)=>r.json(service.deleteStudy(q.user,id(q.params.id))));
   app.patch('/api/studies/:id/leave',auth.middleware,(q,r)=>r.json(service.leaveStudy(q.user,id(q.params.id))));

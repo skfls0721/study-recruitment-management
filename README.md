@@ -1,6 +1,6 @@
 # StudyBoard
 
-스터디장이 모집글을 등록하고 회원이 지원하면, 스터디장이 정원과 조건을 확인해 승인합니다. 승인된 사용자와 스터디장은 스터디 방에서 작업을 관리하고 진행률을 확인합니다.
+스터디장이 모집글을 등록하고 회원이 지원하면, 스터디장이 정원과 조건을 확인해 승인하며 승인된 멤버는 스터디 방에서 작업을 진행하고 스터디장은 스터디를 종료합니다.
 
 ## 기술 스택
 
@@ -26,6 +26,12 @@ npm start
 
 브라우저에서 `http://localhost:3000`에 접속합니다. 테스트는 `npm test`로 실행합니다. Node.js 24.x가 필요합니다.
 
+## JCloud 배포
+
+현재 공개 주소는 [http://s.jedutools.io:40141](http://s.jedutools.io:40141)입니다. JCloud 인스턴스는 Node.js 24.x에서 systemd `studyboard.service`로 실행하며, 서버 `.env`는 `/home/ubuntu/study-recruitment-management/.env`, 영속 DB는 `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`입니다. 배포 절차와 상태 기록은 [`docs/jcloud-deployment.md`](docs/jcloud-deployment.md)를 참고하세요.
+
+코드 갱신 후 인스턴스에서 `git pull --ff-only origin main`, `npm ci`, `sudo systemctl restart studyboard`, `curl http://127.0.0.1:3000/api/health` 순서로 확인합니다. 운영 DB에서는 `npm run db:reset`을 실행하지 않습니다.
+
 ## 환경 변수
 
 | 이름 | 설명 |
@@ -46,6 +52,7 @@ npm start
 - 로그인은 서버에서 JWT를 확인하고, 사용자 ID는 토큰에서 복원합니다.
 - 지원서는 스터디·사용자마다 한 행만 유지합니다. 중복 대기·승인·거절 상태는 거절하고, 지원자가 직접 취소한 경우 모집 기간 안에는 같은 행을 다시 대기 상태로 바꿔 재지원할 수 있습니다.
 - 승인은 `BEGIN IMMEDIATE` 트랜잭션 안에서 최신 정원을 확인한 뒤 지원서 승인 및 멤버 추가를 함께 저장합니다.
+- 스터디장은 모집중인 자기 글만 수정할 수 있고, 정원은 현재 승인 멤버 수보다 작게 줄일 수 없습니다.
 - 스터디장은 정원 계산에서 제외하고, 승인 멤버만 `study_members`에 기록합니다. 시작에는 승인 멤버가 한 명 이상 필요합니다.
 - 취소는 모집중 상태이며 승인 멤버가 없을 때만 가능합니다. 대기 지원서를 거절 처리하고 모집글을 취소하는 변경은 한 트랜잭션으로 처리합니다.
 - 멤버 탈퇴 시 지원 상태 변경, 멤버십 삭제, 해당 멤버 담당 작업의 담당자 비우기를 한 트랜잭션으로 처리합니다.
@@ -58,7 +65,6 @@ npm start
 
 ## 제한사항
 
-- 모집글 수정 API는 구현하지 않았습니다.
 - 정원이 가득 차도 모집글 상태를 자동 마감하지 않습니다. 대기 지원서는 유지하고 후속 승인을 거절합니다.
 - 거절된 지원서는 다시 지원할 수 없습니다. 본인이 취소한 대기 지원만 모집 기간 중 재지원할 수 있습니다.
 - 로그인 반복 횟수 제한은 구현하지 않았습니다.
@@ -67,7 +73,7 @@ npm start
 ## 보고·제출 자료
 
 - 설계 및 규칙: [`docs/design.md`](docs/design.md)
-- API 개요: [`docs/API.md`](docs/API.md)
+- API 개요: [`docs/API.md`](docs/API.md) (`PATCH /api/studies/:id` 모집글 수정 포함)
 - 보고서 초안: [`docs/report.md`](docs/report.md), [`docs/report.pdf`](docs/report.pdf)
 - 이전 과제 재사용·AI 활용 기록: [`docs/usage-log.md`](docs/usage-log.md)
 - 테스트와 화면 확인 기록: [`docs/verification.md`](docs/verification.md)
