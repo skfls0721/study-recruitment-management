@@ -45,7 +45,7 @@
 
 ## 의존성 감사
 
-2026-11-19 `npm audit --omit=dev` 결과는 **취약점 0건**입니다. 전체 `npm audit`은 개발 도구 의존성인 `picomatch`를 통해 고위험 항목을 보고합니다. 같은 ReDoS 권고 및 의존성 경로에 걸리며, 현재 권고에는 패치 버전이 없습니다. 서비스 런타임 의존성에는 포함되지 않습니다. [GitHub Advisory GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+2026-11-20 `npm audit --omit=dev` 결과는 **취약점 0건**입니다. 전체 `npm audit`은 개발 도구 의존성인 `picomatch`를 통해 고위험 항목을 보고합니다. 같은 ReDoS 권고 및 의존성 경로에 걸리며, 현재 권고에는 패치 버전이 없습니다. 서비스 런타임 의존성에는 포함되지 않습니다. [GitHub Advisory GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
 
 ## 코드·설정 검토 결과
 
@@ -62,7 +62,7 @@
 | 비밀 파일 | `.env`는 `.gitignore` 대상이며 추적 파일·저장소 기록에서 일반 비밀값 패턴을 찾지 못함. `.env.example`은 빈 설정 항목만 포함 |
 | SQLite 파일 | `data/*.sqlite*`는 `.gitignore` 대상이며 Git 추적 파일이 아님 |
 | 서버 오류 | 500 응답은 `{code,message}`만 반환하고 스택은 응답에 포함하지 않음 |
-| 상태 전이·삭제 모달 | 확인 모달, ESC·바깥 클릭 닫기, 삭제 `aria-disabled` 안내를 코드에 반영; 최종 브라우저 캡처 확인은 남음 |
+| 상태 전이·삭제 모달 | 로컬 브라우저에서 이력 삭제 안내 모달 및 ESC 닫기·포커스 복귀 확인; 바깥 클릭과 배포 화면 캡처는 미확인 |
 | 로그인 반복 제한 | 미구현(선택 항목) |
 
 ## 서비스 정책 및 미구현 범위
@@ -76,4 +76,4 @@
 
 ## JCloud 확인
 
-2026-11-19 서버에서 `studyboard.service`가 enabled/active인지, `/api/health`가 `{"status":"ok"}`인지 확인했습니다. 서버 `.env`에 `JWT_SECRET`이 설정되어 있는지는 값 노출 없이 Boolean만 확인했습니다. DB 경로는 `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`이며 파일과 `leaderA`, `leaderB`, `memberC` 계정이 존재합니다. 서비스를 재시작한 뒤에도 DB·시연 글이 남아 있었습니다. 별도 휴대폰 데이터망에서의 전체 등록→지원→승인 흐름은 사용자가 마지막으로 확인해야 합니다.
+2026-11-20 서버에서 최신 코드 배포 후 `studyboard.service`가 enabled/active인지, `/api/health`가 `{"status":"ok"}`인지 확인했습니다. 공개 주소는 HTTP 200을 반환하고 `/api/studies`에 최근 데모 제목·닉네임·마감일이 표시됩니다. 서버의 `npm test`도 31개 모두 통과했습니다. 서버 `.env`에 `JWT_SECRET`이 설정되어 있는지는 값 노출 없이 Boolean만 확인했습니다. DB 경로는 `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`이며 파일과 `leaderA`, `leaderB`, `memberC` 계정이 존재합니다. 서비스를 재시작한 뒤에도 DB·시연 글이 남아 있었으며 `npm run demo:prepare`로 세 시연글의 데모 상태를 갱신했습니다. 별도 휴대폰 데이터망에서의 전체 등록→지원→승인 흐름은 사용자가 마지막으로 확인해야 합니다.

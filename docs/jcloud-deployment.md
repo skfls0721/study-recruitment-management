@@ -2,11 +2,11 @@
 
 ## 현재 배포
 
-2026-11-19 확인한 인스턴스는 `202323035`이며 Ubuntu 24.04, `micro` 사양입니다. 앱은 systemd의 `studyboard.service`로 실행하고 내부 포트 3000을 사용합니다. 서비스는 `enabled` 및 `active`이며 JCloud의 공개 포트 매핑은 `s.jedutools.io:40141` → 내부 3000입니다. 유동 IP 할당은 계정 정책에서 거절되어 사용하지 않습니다. 서버 Node.js는 24.x입니다.
+2026-11-20 확인한 인스턴스는 `202323035`이며 Ubuntu 24.04, `micro` 사양입니다. 앱은 systemd의 `studyboard.service`로 실행하고 내부 포트 3000을 사용합니다. 서비스는 `enabled` 및 `active`이며 JCloud의 공개 포트 매핑은 `s.jedutools.io:40141` → 내부 3000입니다. 유동 IP 할당은 계정 정책에서 거절되어 사용하지 않습니다. 서버 Node.js는 24.x입니다.
 
 - 공개 URL: <http://s.jedutools.io:40141>
 - 상태 확인: `curl http://127.0.0.1:3000/api/health` → `{"status":"ok"}`
-- 서비스: systemd `studyboard.service` enabled/active, 2026-11-19 시점 최신 코드 배포 후 재시작 확인; 이후 UI 변경분은 재배포 필요
+- 서비스: systemd `studyboard.service` enabled/active, 2026-11-20 변경 코드 배포 및 재시작 완료
 - 비밀키: `.env`에서 `JWT_SECRET` 설정 여부 확인(값은 노출하지 않음); 서버 시작 시 미설정이면 종료
 - DB: `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`, 파일 존재 확인. 서비스 재시작 뒤 데모 데이터 유지 확인
 - 계정·시연글: `leaderA`, `leaderB`, `memberC` 계정 및 시연 스터디가 배포 DB에 존재
@@ -35,9 +35,9 @@ cp .env.example .env
 
 - [x] 인스턴스 생성 및 SSH 접속
 - [x] 앱 의존성 설치와 systemd 서비스 실행
-- [x] 최신 커밋 배포, 서버 자동 테스트 30개 통과(2026-11-19; 이후 변경분 재배포·재검증 필요), systemd 재시작
-- [x] 내부 health 확인
-- [x] 공개 주소에서 화면 표시와 로그인 확인
+- [x] 2026-11-20 변경 코드 배포, 서버 자동 테스트 31개 통과, systemd 재시작
+- [x] 내부 health 확인 및 공개 페이지 HTTP 200
+- [x] 공개 주소에서 화면 표시·API 목록 응답 확인; 실제 로그인 흐름 캡처는 별도 확인 필요
 - [x] 브라우저 390px 폭에서 비로그인 등록 폼 숨김·가로 넘침 없음·Console 오류 없음 확인
 - [ ] 다른 네트워크에서 모집글 등록→지원→승인→작업 변경 전체 흐름 재확인
 - [ ] Network/Console 탭에서 배포 origin 사용과 404·500·CORS 오류 여부 캡처
