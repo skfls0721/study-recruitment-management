@@ -124,8 +124,12 @@ function navigate(page, { id = null, replace = false } = {}) {
 function showPage(route) {
   const pageId = ['new', 'edit'].includes(route.page) ? 'studyFormPage' : `${route.page}Page`;
   $$('.page').forEach(section => { section.hidden = section.id !== pageId; });
+  const composing = ['new', 'edit'].includes(route.page);
+  $('#createStudyButton').classList.toggle('navActive', composing);
+  if (composing) $('#createStudyButton').setAttribute('aria-current', 'page');
+  else $('#createStudyButton').removeAttribute('aria-current');
   $$('[data-page]').forEach(button => {
-    const active = button.dataset.page === route.page || (['new', 'edit'].includes(route.page) && button.dataset.page === 'studies');
+    const active = button.dataset.page === route.page;
     button.classList.toggle('navActive', active);
     if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
   });
