@@ -165,8 +165,8 @@ $('#createStudyButton').addEventListener('click', () => navigate('new'));
 function refreshAuth() {
   $('#authNav').textContent = me ? `${me.displayName} 님` : '로그인';
   $('#authNav').dataset.page = me ? 'mine' : 'login';
+  $('#mineHeading').textContent = me ? `${me.displayName} 님의 활동` : '내 활동';
   $('#logout').hidden = !me;
-  $('#mineNav').hidden = !me;
   $('#createStudyButton').hidden = !me;
 }
 $('#logout').addEventListener('click', () => {
