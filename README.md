@@ -30,7 +30,7 @@ npm start
 
 현재 공개 주소는 [http://s.jedutools.io:40141](http://s.jedutools.io:40141)입니다. JCloud 인스턴스는 Node.js 24.x에서 systemd `studyboard.service`로 실행하며, 서버 `.env`는 `/home/ubuntu/study-recruitment-management/.env`, 영속 DB는 `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite`입니다. 배포 절차와 상태 기록은 [`docs/jcloud-deployment.md`](docs/jcloud-deployment.md)를 참고하세요.
 
-코드 갱신 후 인스턴스에서 `git pull --ff-only origin main`, `npm ci`, `sudo systemctl restart studyboard`, `curl http://127.0.0.1:3000/api/health` 순서로 확인합니다. 운영 DB에서는 `npm run db:reset`을 실행하지 않습니다.
+코드 갱신 후 인스턴스에서 `git pull --ff-only origin main`, `npm ci`, `sudo systemctl restart studyboard`, `curl http://127.0.0.1:3000/api/health` 순서로 확인합니다. 데모 시연 지원이 소진되었을 때만 `npm run demo:prepare`로 예약된 데모 데이터 세 건을 다시 구성합니다. 운영 DB에서는 `npm run db:reset`을 실행하지 않습니다.
 
 ## 환경 변수
 
@@ -45,7 +45,7 @@ npm start
 
 `npm run db:reset`은 테스트 계정 3개와 한 자리 남은 스터디, 정원 1자리에 대기 지원 2건인 초과 승인 시연 스터디, 라이브 지원 시연용 모집중 스터디를 만듭니다. `DEMO_PASSWORD`를 설정하지 않으면 공통 비밀번호를 무작위로 생성해 터미널에 한 번 표시합니다. LMS에는 이 계정 정보를 별도로 제출하세요. 초기화 명령은 기존 SQLite 파일을 삭제하므로 보존할 데이터가 있을 때 실행하지 마세요.
 
-기존 데모 계정이 준비된 운영 DB에 모집글만 추가하려면 `npm run db:seed:demo`를 사용합니다. 이 명령은 기존 사용자·스터디·지원 이력을 수정하거나 DB 파일을 삭제하지 않으며, 같은 이름의 시연 글과 지원서는 중복 생성하지 않습니다.
+기존 데모 계정이 준비된 운영 DB의 시연 상태를 다시 맞추려면 `npm run demo:prepare`를 사용합니다. 이 명령은 `leaderA`, `leaderB`, `memberC`의 표시 이름을 지훈·민수·서연으로 맞추고, 이 계정이 소유한 이름이 정해진 시연 모집글 3개의 마감일·상태·지원서·멤버 관계만 다시 구성합니다. 정원 초과 시연 글은 C가 먼저 보이고 B와 C가 모두 대기 상태입니다. 그 외 사용자, 모집글, 지원서, 멤버십, 작업은 건드리지 않습니다. 시연 글 내부의 작업도 유지합니다. 완전히 새 DB가 필요할 때만 `npm run db:reset`을 사용하세요.
 
 ## 핵심 규칙
 
@@ -57,7 +57,8 @@ npm start
 - 취소는 모집중 상태이며 승인 멤버가 없을 때만 가능합니다. 대기 지원서를 거절 처리하고 모집글을 취소하는 변경은 한 트랜잭션으로 처리합니다.
 - 멤버 탈퇴 시 지원 상태 변경, 멤버십 삭제, 해당 멤버 담당 작업의 담당자 비우기를 한 트랜잭션으로 처리합니다.
 - 제목은 100자 이하, 정원은 1~100명, 마감일은 오늘 이후의 유효한 날짜여야 합니다.
-- 모집글, 지원서, 작업 상태 전이는 서비스 계층에서 검사합니다.
+- 모집글, 지원서, 작업 상태 전이는 서비스 계층에서 검사합니다. 종료·취소된 스터디에서는 작업 등록·상태 변경·삭제·보관을 모두 거절합니다.
+- 지원 메시지(최대 500자)와 지원 시각을 보존하며, 승인·거절 처리자와 처리 시각은 스터디장용 지원자 목록에 표시합니다.
 - 작업은 `todo → doing → done`만 허용합니다. 작업이 없으면 진행률은 0%입니다. 보관된 `done` 작업도 계산에 포함합니다.
 - 입력 길이: 모집글 제목 100자, 소개 1000자, 작업 제목 120자, 사용자 이름 40자 이내입니다. 정원은 1~100명입니다.
 - 모집글은 지원 이력과 멤버가 모두 없을 때만 삭제할 수 있습니다. 지원 이력이 있으면 삭제하지 않고 취소 규칙을 적용하며, 승인 멤버가 있으면 삭제·취소할 수 없습니다.

@@ -20,7 +20,7 @@ export function createStudyRepository(db) {
       FROM study_members m JOIN users u ON u.id=m.user_id WHERE m.study_id=? ORDER BY m.joined_at,u.id`).all(studyId); },
     application(id) { return db.prepare('SELECT * FROM applications WHERE id=?').get(id); },
     applicationForUserStudy(studyId,userId) { return db.prepare('SELECT * FROM applications WHERE study_id=? AND user_id=?').get(studyId,userId); },
-    forStudy(studyId) { return db.prepare(`SELECT a.*,u.display_name FROM applications a JOIN users u ON u.id=a.user_id WHERE a.study_id=? ORDER BY a.id`).all(studyId); },
+    forStudy(studyId) { return db.prepare(`SELECT a.*,u.display_name,d.display_name AS decided_by_name FROM applications a JOIN users u ON u.id=a.user_id LEFT JOIN users d ON d.id=a.decided_by WHERE a.study_id=? ORDER BY a.id`).all(studyId); },
     myApplications(userId) { return db.prepare(`SELECT a.*,s.title AS study_title,s.status AS study_status,s.deadline AS study_deadline FROM applications a JOIN studies s ON s.id=a.study_id WHERE a.user_id=? ORDER BY a.id DESC`).all(userId); },
     isMember(studyId,userId) { return !!db.prepare('SELECT 1 FROM study_members WHERE study_id=? AND user_id=?').get(studyId,userId); },
     memberCount(studyId) { return db.prepare('SELECT COUNT(*) AS n FROM study_members WHERE study_id=?').get(studyId).n; },

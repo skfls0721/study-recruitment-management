@@ -19,7 +19,7 @@ export function createApp({db,secret=process.env.JWT_SECRET||'local-only-secret-
   app.patch('/api/studies/:id/status',auth.middleware,(q,r)=>r.json(service.changeStudyStatus(q.user,id(q.params.id),q.body?.status)));
   app.delete('/api/studies/:id',auth.middleware,(q,r)=>r.json(service.deleteStudy(q.user,id(q.params.id))));
   app.patch('/api/studies/:id/leave',auth.middleware,(q,r)=>r.json(service.leaveStudy(q.user,id(q.params.id))));
-  app.post('/api/studies/:id/applications',auth.middleware,(q,r)=>r.status(201).json(service.apply(q.user,id(q.params.id))));
+  app.post('/api/studies/:id/applications',auth.middleware,(q,r)=>r.status(201).json(service.apply(q.user,id(q.params.id),q.body)));
   app.get('/api/studies/:id/applications',auth.middleware,(q,r)=>{const s=repo.study(id(q.params.id));if(!s)throw missing('모집글');if(s.owner_id!==q.user.id)throw forbidden();r.json(repo.forStudy(s.id));});
   for(const action of ['approve','reject'])app.patch(`/api/applications/:id/${action}`,auth.middleware,(q,r)=>r.json(service.decide(q.user,id(q.params.id),action)));
   app.patch('/api/applications/:id/cancel',auth.middleware,(q,r)=>r.json(service.cancelApplication(q.user,id(q.params.id))));

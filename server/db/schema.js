@@ -30,6 +30,10 @@ export function initialize(db) {
     CREATE INDEX IF NOT EXISTS idx_studies_status ON studies(status);
     CREATE INDEX IF NOT EXISTS idx_applications_study ON applications(study_id,status);
     CREATE INDEX IF NOT EXISTS idx_tasks_study ON tasks(study_id,status);`);
+  const applicationColumns = db.prepare('PRAGMA table_info(applications)').all();
+  if (!applicationColumns.some(column => column.name === 'message')) db.exec("ALTER TABLE applications ADD COLUMN message TEXT NOT NULL DEFAULT ''");
+  if (!applicationColumns.some(column => column.name === 'decided_by')) db.exec('ALTER TABLE applications ADD COLUMN decided_by INTEGER REFERENCES users(id)');
+  if (!applicationColumns.some(column => column.name === 'decided_at')) db.exec('ALTER TABLE applications ADD COLUMN decided_at TEXT');
   const assignee = db.prepare('PRAGMA table_info(tasks)').all().find(column=>column.name==='assignee_id');
   if(assignee?.notnull){
     db.exec('BEGIN IMMEDIATE');
