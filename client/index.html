@@ -29,7 +29,7 @@
           <label for="loginUsername">아이디</label>
           <input id="loginUsername" name="username" required autocomplete="username">
           <label for="loginPassword">비밀번호</label>
-          <input id="loginPassword" name="password" type="password" required autocomplete="current-password">
+          <input id="loginPassword" name="password" type="password" maxlength="200" required autocomplete="current-password">
           <p class="fieldError" data-error-for="login"></p>
           <button type="submit">로그인</button>
         </form>
@@ -41,8 +41,8 @@
           <label for="signupDisplayName">이름</label>
           <input id="signupDisplayName" name="displayName" maxlength="40" required autocomplete="name">
           <label for="signupPassword">비밀번호</label>
-          <input id="signupPassword" name="password" type="password" minlength="8" maxlength="100" required autocomplete="new-password" aria-describedby="passwordHelp">
-          <small id="passwordHelp" class="helpText">8~100자로 입력하세요.</small>
+          <input id="signupPassword" name="password" type="password" minlength="8" maxlength="72" required autocomplete="new-password" aria-describedby="passwordHelp">
+          <small id="passwordHelp" class="helpText">8자 이상, UTF-8 기준 72바이트 이하로 입력하세요. 아이디와 같거나 흔한 비밀번호는 사용할 수 없습니다.</small>
           <p class="fieldError" data-error-for="signup"></p>
           <button type="submit">가입하기</button>
         </form>
@@ -78,7 +78,7 @@
       <h1 id="studyFormHeading">모집글 작성</h1>
       <form id="studyForm" class="card studyForm" novalidate>
         <label for="studyTitle">제목 <span class="requiredMark">필수</span></label>
-        <input id="studyTitle" name="title" required maxlength="100" aria-describedby="titleHelp titleCount">
+        <input id="studyTitle" name="title" required maxlength="200" aria-describedby="titleHelp titleCount">
         <small id="titleHelp" class="helpText">100자 이내로 입력하세요.</small>
         <small id="titleCount" class="helpText" aria-live="polite">0/100자</small>
         <p class="fieldError" data-error-for="title"></p>

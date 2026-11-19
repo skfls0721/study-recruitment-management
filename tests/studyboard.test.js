@@ -7,6 +7,22 @@ async function makeStudy(ctx,token,capacity=1){return (await ctx.client.post('/a
 describe('StudyBoard 핵심 규칙',()=>{
   it('가입·로그인하고 보호 API는 토큰 없이는 거절하며 데이터는 바뀌지 않는다',async()=>{ctx=setup();expect((await ctx.client.get('/api/applications/mine')).status).toBe(401);expect((await ctx.client.post('/api/studies').send({title:'무단 글',capacity:1,deadline:'2099-12-31'})).status).toBe(401);expect(ctx.db.prepare('SELECT COUNT(*) n FROM studies').get().n).toBe(0);const r=await ctx.client.post('/api/auth/signup').send({username:'newuser',displayName:'새 회원',password:'Password!2026'});expect(r.status).toBe(201);expect((await ctx.client.post('/api/auth/login').send({username:'newuser',password:'Password!2026'})).status).toBe(200);});
   it('변조 토큰은 401, 가입 중복은 409이며 해시와 공개 사용자 응답을 확인한다',async()=>{ctx=setup();const invalid=await ctx.client.get('/api/me/studies').set('Authorization','Bearer forged.token.value');expect(invalid.status).toBe(401);const signup=await ctx.client.post('/api/auth/signup').send({username:'hashcheck',displayName:'해시 확인',password:'Password!2026'});expect(signup.status).toBe(201);expect(signup.body).not.toHaveProperty('password_hash');expect(ctx.db.prepare('SELECT password_hash FROM users WHERE username=?').get('hashcheck').password_hash).toMatch(/^\$2[aby]\$/);const duplicate=await ctx.client.post('/api/auth/signup').send({username:'hashcheck',displayName:'중복',password:'Password!2026'});expect(duplicate.status).toBe(409);expect(duplicate.body).toHaveProperty('message');const wrong=await ctx.client.post('/api/auth/login').send({username:'hashcheck',password:'wrong-password'}),missing=await ctx.client.post('/api/auth/login').send({username:'notfound',password:'wrong-password'});expect(wrong.status).toBe(401);expect(wrong.body.message).toBe(missing.body.message);});
+  it('아이디 길이와 비밀번호의 공통값·동일값·UTF-8 bcrypt 경계를 검사한다',async()=>{
+    ctx=setup();
+    const rejected=[
+      {username:'x'.repeat(31),displayName:'긴 아이디',password:'Password!2026'},
+      {username:'shortpass',displayName:'짧은 비밀번호',password:'abc1234'},
+      {username:'samepass',displayName:'동일 비밀번호',password:'SAMEPASS'},
+      {username:'commonpass',displayName:'흔한 비밀번호',password:'password1234'},
+      {username:'overbytes',displayName:'바이트 초과',password:'가'.repeat(25)},
+    ];
+    for(const input of rejected) expect((await ctx.client.post('/api/auth/signup').send(input)).status).toBe(400);
+    const valid={username:'unicodepass',displayName:'한글 비밀번호',password:'가'.repeat(24)};
+    expect(Buffer.byteLength(valid.password,'utf8')).toBe(72);
+    expect((await ctx.client.post('/api/auth/signup').send(valid)).status).toBe(201);
+    expect((await ctx.client.post('/api/auth/login').send({username:valid.username,password:valid.password})).status).toBe(200);
+    expect((await ctx.client.post('/api/auth/login').send({username:valid.username,password:`${valid.password}가`})).status).toBe(401);
+  });
   it('위조된 user_id는 무시하고 없는 상세·진행률 ID는 404로 처리한다',async()=>{ctx=setup();const a=await ctx.login('leaderA');const created=await ctx.client.post('/api/studies').set('Authorization',`Bearer ${a}`).send({owner_id:2,user_id:2,title:'토큰 소유자 글',capacity:1,deadline:'2099-12-31'});expect(created.status).toBe(201);expect(created.body.owner_id).toBe(1);expect((await ctx.client.get('/api/studies/9999')).status).toBe(404);expect((await ctx.client.get('/api/studies/9999/progress').set('Authorization',`Bearer ${a}`)).status).toBe(404);});
   it('깨진 JSON은 400과 안내 메시지로 응답한다',async()=>{ctx=setup();const response=await ctx.client.post('/api/studies').set('Content-Type','application/json').send('{"title":');expect(response.status).toBe(400);expect(response.body).toMatchObject({code:'BAD_INPUT'});expect(response.body.message).toBeTruthy();});
   it('요청 본문 크기 제한을 넘으면 413 JSON 안내를 반환한다',async()=>{ctx=setup();const response=await ctx.client.post('/api/studies').send({title:'x'.repeat(18000)});expect(response.status).toBe(413);expect(response.body).toMatchObject({code:'PAYLOAD_TOO_LARGE'});});
@@ -74,4 +90,11 @@ describe('StudyBoard 핵심 규칙',()=>{
     await ctx.client.patch(`/api/applications/${created.body.id}/reject`).set('Authorization',`Bearer ${a}`).send({});const processed=await ctx.client.get(`/api/studies/${s.id}/applications`).set('Authorization',`Bearer ${a}`);expect(processed.body[0].decided_by_name).toBe('장 A');expect(processed.body[0].decided_at).toBeTruthy();
   });
   it('빈 제목·잘못된 정원·긴 소개·달력에 없는 날짜를 저장하지 않는다',async()=>{ctx=setup();const a=await ctx.login('leaderA');for(const body of [{title:'',capacity:1,deadline:'2099-12-31'},{title:'스터디',capacity:0,deadline:'2099-12-31'},{title:'음수',capacity:-1,deadline:'2099-12-31'},{title:'소수',capacity:1.5,deadline:'2099-12-31'},{title:'문자',capacity:'abc',deadline:'2099-12-31'},{title:'소개 초과',description:'x'.repeat(1001),capacity:1,deadline:'2099-12-31'},{title:'스터디',capacity:1,deadline:'2099-02-31'}]){const res=await ctx.client.post('/api/studies').set('Authorization',`Bearer ${a}`).send(body);expect(res.status).toBe(400);expect(res.body).toHaveProperty('code');expect(res.body).toHaveProperty('message');}expect(ctx.db.prepare('SELECT COUNT(*) n FROM studies').get().n).toBe(0);});
+  it('모집글 제목은 100자·UTF-8 300바이트 경계로 검사한다',async()=>{
+    ctx=setup();const a=await ctx.login('leaderA');
+    const valid=await ctx.client.post('/api/studies').set('Authorization',`Bearer ${a}`).send({title:'가'.repeat(100),capacity:1,deadline:'2099-12-31'});
+    expect(valid.status).toBe(201);expect(Buffer.byteLength(valid.body.title,'utf8')).toBe(300);
+    const tooManyBytes=await ctx.client.post('/api/studies').set('Authorization',`Bearer ${a}`).send({title:'😀'.repeat(76),capacity:1,deadline:'2099-12-31'});
+    expect(tooManyBytes.status).toBe(400);expect(ctx.db.prepare('SELECT COUNT(*) n FROM studies').get().n).toBe(1);
+  });
 });

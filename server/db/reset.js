@@ -2,12 +2,14 @@ import { rmSync, existsSync } from 'node:fs';
 import { openDb } from './index.js';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
+import { passwordPolicyError } from '../password-policy.js';
 if (process.env.NODE_ENV !== 'test' && existsSync('.env')) process.loadEnvFile('.env');
 const path=process.env.DB_PATH||'./data/studyboard.sqlite';
+const password=process.env.DEMO_PASSWORD||randomBytes(12).toString('base64url');
+const passwordError=passwordPolicyError('',password);
+if(passwordError)throw new Error(`DEMO_PASSWORD is invalid: ${passwordError}`);
 try{rmSync(path,{force:true});}catch{}
 const db=openDb(path);
-const password=process.env.DEMO_PASSWORD||randomBytes(12).toString('base64url');
-if(password.length<8||password.length>100)throw new Error('DEMO_PASSWORD must be 8 to 100 characters.');
 const users=[['leaderA','지훈'],['leaderB','민수'],['memberC','서연']];
 const deadline=new Date();deadline.setDate(deadline.getDate()+28);const deadlineText=deadline.toISOString().slice(0,10);
 for(const [username,name] of users)db.prepare('INSERT INTO users(username,display_name,password_hash) VALUES(?,?,?)').run(username,name,bcrypt.hashSync(password,12));

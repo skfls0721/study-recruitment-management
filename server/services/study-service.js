@@ -11,7 +11,7 @@ export function createStudyService(repo) {
   return {
     createStudy(user,input) {
       const title=String(input?.title||'').trim(), description=String(input?.description||'').trim(), capacity=Number(input?.capacity), deadline=String(input?.deadline||'');
-      if(!title||title.length>100||description.length>1000||!Number.isSafeInteger(capacity)||capacity<1||capacity>100||!validDate(deadline)||deadline<new Date().toISOString().slice(0,10))throw bad('제목(100자 이하), 소개(1000자 이하), 정원(1~100명), 미래 마감일을 확인해 주세요.');
+      if(!title||Array.from(title).length>100||Buffer.byteLength(title,'utf8')>300||description.length>1000||!Number.isSafeInteger(capacity)||capacity<1||capacity>100||!validDate(deadline)||deadline<new Date().toISOString().slice(0,10))throw bad('제목(100자·UTF-8 300바이트 이하), 소개(1000자 이하), 정원(1~100명), 미래 마감일을 확인해 주세요.');
       const r=db.prepare('INSERT INTO studies(owner_id,title,description,capacity,deadline) VALUES(?,?,?,?,?)').run(user.id,title,description,capacity,deadline);
       return repo.study(Number(r.lastInsertRowid));
     },
@@ -19,7 +19,7 @@ export function createStudyService(repo) {
       const s=repo.study(id);if(!s)throw missing('모집글');owner(user,s);
       if(s.status!=='RECRUITING')throw conflict('모집 중인 글만 수정할 수 있습니다.');
       const title=String(input?.title||'').trim(),description=String(input?.description||'').trim(),capacity=Number(input?.capacity),deadline=String(input?.deadline||'');
-      if(!title||title.length>100||description.length>1000||!Number.isSafeInteger(capacity)||capacity<1||capacity>100||!validDate(deadline)||deadline<new Date().toISOString().slice(0,10))throw bad('제목(100자 이하), 소개(1000자 이하), 정원(1~100명), 미래 마감일을 확인해 주세요.');
+      if(!title||Array.from(title).length>100||Buffer.byteLength(title,'utf8')>300||description.length>1000||!Number.isSafeInteger(capacity)||capacity<1||capacity>100||!validDate(deadline)||deadline<new Date().toISOString().slice(0,10))throw bad('제목(100자·UTF-8 300바이트 이하), 소개(1000자 이하), 정원(1~100명), 미래 마감일을 확인해 주세요.');
       if(capacity<repo.memberCount(id))throw conflict('현재 승인된 멤버 수보다 정원을 작게 설정할 수 없습니다.');
       db.prepare('UPDATE studies SET title=?,description=?,capacity=?,deadline=? WHERE id=?').run(title,description,capacity,deadline,id);
       return repo.study(id);

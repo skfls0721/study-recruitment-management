@@ -7,6 +7,8 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char]));
+const utf8Bytes = value => new TextEncoder().encode(value).length;
+const commonPasswords = new Set(['password','password1234','12345678','123456789','qwerty1234','letmein1234','admin1234','iloveyou1234']);
 const APP_LABELS = { PENDING: '대기', APPROVED: '승인', REJECTED: '거절', CANCELLED: '지원 취소', WITHDRAWN: '탈퇴' };
 const STUDY_LABELS = { RECRUITING: '모집중', CLOSED: '모집 마감', ACTIVE: '진행중', FINISHED: '종료', CANCELLED: '모집 취소' };
 const isWithinRecruitment = study => study.status === 'RECRUITING' && study.deadline >= today();
@@ -198,6 +200,11 @@ $('#loginForm').addEventListener('submit', async event => {
   event.preventDefault();
   const form = event.currentTarget;
   formErrors(form);
+  const password = String(new FormData(form).get('password') || '');
+  if (utf8Bytes(password) > 72) {
+    formErrors(form, { login: '비밀번호는 UTF-8 기준 72바이트 이하로 입력해 주세요.' });
+    return;
+  }
   await withBusy(event.submitter, async () => {
     try {
       const result = await api('/auth/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
@@ -219,7 +226,10 @@ $('#signupForm').addEventListener('submit', async event => {
   const errors = {};
   if (!/^[a-zA-Z0-9_]{3,30}$/.test(data.username || '')) errors.signup = '아이디는 영문·숫자·밑줄 3~30자여야 합니다.';
   else if (!data.displayName?.trim()) errors.signup = '이름을 입력해 주세요.';
-  else if ((data.password || '').length < 8) errors.signup = '비밀번호는 8자 이상이어야 합니다.';
+  else if (Array.from(data.password || '').length < 8) errors.signup = '비밀번호는 8자 이상이어야 합니다.';
+  else if (utf8Bytes(data.password || '') > 72) errors.signup = '비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.';
+  else if ((data.password || '').toLowerCase() === (data.username || '').toLowerCase()) errors.signup = '아이디와 같은 비밀번호는 사용할 수 없습니다.';
+  else if (commonPasswords.has((data.password || '').toLowerCase())) errors.signup = '자주 사용되는 비밀번호는 사용할 수 없습니다.';
   if (Object.keys(errors).length) { formErrors(form, errors); return; }
   await withBusy(event.submitter, async () => {
     try {
@@ -243,7 +253,7 @@ function defaultDeadline() {
   return deadline.toISOString().slice(0, 10);
 }
 function updateTitleCount() {
-  $('#titleCount').textContent = `${$('#studyTitle').value.length}/100자`;
+  $('#titleCount').textContent = `${Array.from($('#studyTitle').value).length}/100자`;
 }
 $('#studyTitle').addEventListener('input', updateTitleCount);
 
@@ -309,7 +319,8 @@ $('#studyForm').addEventListener('submit', async event => {
   const data = Object.fromEntries(new FormData(form));
   const errors = {};
   if (!data.title?.trim()) errors.title = '제목을 입력해 주세요.';
-  else if (data.title.trim().length > 100) errors.title = '제목은 100자 이내로 입력해 주세요.';
+  else if (Array.from(data.title.trim()).length > 100) errors.title = '제목은 100자 이내로 입력해 주세요.';
+  else if (utf8Bytes(data.title.trim()) > 300) errors.title = '제목은 UTF-8 기준 300바이트 이하여야 합니다.';
   if ((data.description || '').length > 1000) errors.description = '소개는 1,000자 이내로 입력해 주세요.';
   const capacity = Number(data.capacity);
   if (!Number.isSafeInteger(capacity) || capacity < 1 || capacity > 100) errors.capacity = '정원은 1~100명의 정수로 입력해 주세요.';
