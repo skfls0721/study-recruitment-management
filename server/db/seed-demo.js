@@ -29,7 +29,7 @@ const reservedStudies = [
   },
   {
     title: '정원 초과 시연 스터디',
-    description: '정원 1명인 모집입니다. 지원자 한 명을 승인하면 남은 대기 지원자의 승인이 거절되는 흐름을 확인할 수 있습니다.',
+    description: '소규모로 알고리즘 문제를 풀고 풀이 방법을 나누는 스터디입니다.',
     capacity: 1,
     members: [
       { userId: memberC.id, status: 'PENDING', message: '자료구조와 알고리즘을 함께 공부하고 싶습니다.' },
@@ -38,7 +38,7 @@ const reservedStudies = [
   },
   {
     title: '라이브 지원 시연 스터디',
-    description: '모집글 상세에서 새 회원이 직접 지원하는 흐름을 시연할 수 있는 모집입니다.',
+    description: '주 1회 웹 개발 내용을 함께 공부하고 작은 기능을 만들어 봅니다.',
     capacity: 3,
     members: [],
   },
