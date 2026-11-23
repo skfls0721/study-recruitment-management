@@ -3,6 +3,7 @@ import { openDb } from './index.js';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { passwordPolicyError } from '../password-policy.js';
+import { kstDate } from '../kst-date.js';
 if (process.env.NODE_ENV !== 'test' && existsSync('.env')) process.loadEnvFile('.env');
 const path=process.env.DB_PATH||'./data/studyboard.sqlite';
 const password=process.env.DEMO_PASSWORD||randomBytes(12).toString('base64url');
@@ -11,13 +12,18 @@ if(passwordError)throw new Error(`DEMO_PASSWORD is invalid: ${passwordError}`);
 try{rmSync(path,{force:true});}catch{}
 const db=openDb(path);
 const users=[['leaderA','지훈'],['leaderB','민수'],['memberC','서연']];
-const deadline=new Date();deadline.setDate(deadline.getDate()+28);const deadlineText=deadline.toISOString().slice(0,10);
+const deadlineDate=new Date(`${kstDate()}T00:00:00.000Z`);deadlineDate.setUTCDate(deadlineDate.getUTCDate()+28);const deadlineText=deadlineDate.toISOString().slice(0,10);
 for(const [username,name] of users)db.prepare('INSERT INTO users(username,display_name,password_hash) VALUES(?,?,?)').run(username,name,bcrypt.hashSync(password,12));
 const study=db.prepare(`INSERT INTO studies(owner_id,title,description,capacity,deadline) VALUES
   ((SELECT id FROM users WHERE username='leaderA'),'알고리즘 스터디','주 1회 함께 알고리즘 문제를 풀이하고 풀이 방법을 나누는 스터디입니다.',2,'${deadlineText}')`).run();
-const studyId=Number(study.lastInsertRowid),leaderBId=db.prepare("SELECT id FROM users WHERE username='leaderB'").get().id;
-db.prepare("INSERT INTO applications(study_id,user_id,status,message,decided_by,decided_at) VALUES(?,?,'APPROVED','알고리즘 문제 풀이에 꾸준히 참여하고 싶습니다.',?,CURRENT_TIMESTAMP)").run(studyId,leaderBId,db.prepare("SELECT id FROM users WHERE username='leaderA'").get().id);
+const studyId=Number(study.lastInsertRowid),leaderBId=db.prepare("SELECT id FROM users WHERE username='leaderB'").get().id,leaderAId=db.prepare("SELECT id FROM users WHERE username='leaderA'").get().id;
+db.prepare("UPDATE studies SET status='ACTIVE',close_reason='MANUAL' WHERE id=?").run(studyId);
+db.prepare("INSERT INTO applications(study_id,user_id,status,message,decided_by,decided_at) VALUES(?,?,'APPROVED','알고리즘 문제 풀이에 꾸준히 참여하고 싶습니다.',?,CURRENT_TIMESTAMP)").run(studyId,leaderBId,leaderAId);
 db.prepare('INSERT INTO study_members(study_id,user_id) VALUES(?,?)').run(studyId,leaderBId);
+const seedTask=db.prepare('INSERT INTO tasks(study_id,title,description,assignee_id,status,due_date) VALUES(?,?,?,?,?,?)');
+seedTask.run(studyId,'데모 작업 · 배열 문제 풀이','기본 자료구조 문제를 함께 풀고 접근 방법을 정리합니다.',leaderBId,'todo',deadlineText);
+seedTask.run(studyId,'데모 작업 · 그래프 탐색 복습','BFS와 DFS의 차이와 시간 복잡도를 정리합니다.',leaderAId,'doing',deadlineText);
+seedTask.run(studyId,'데모 작업 · 주간 회고','이번 주 학습 내용을 공유하고 다음 주 목표를 적습니다.',leaderBId,'done',deadlineText);
 const memberCId=db.prepare("SELECT id FROM users WHERE username='memberC'").get().id;
 const capacityStudyId=Number(db.prepare(`INSERT INTO studies(owner_id,title,description,capacity,deadline) VALUES
   ((SELECT id FROM users WHERE username='leaderA'),'정원 초과 시연 스터디','정원 1명인 모집입니다. 지원자 한 명을 승인하면 남은 대기 지원자의 승인이 거절되는 흐름을 확인할 수 있습니다.',1,'${deadlineText}')`).run().lastInsertRowid);

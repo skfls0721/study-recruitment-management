@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { openDb } from './index.js';
+import { kstDate } from '../kst-date.js';
 
 if (process.env.NODE_ENV !== 'test' && existsSync('.env')) process.loadEnvFile('.env');
 
@@ -14,14 +15,16 @@ if (!leader || !memberB || !memberC) {
   throw new Error('데모 계정 leaderA, leaderB, memberC가 필요합니다. 데모 계정이 없는 DB에는 먼저 초기 데이터를 준비하세요.');
 }
 
-const deadline = new Date();
-deadline.setDate(deadline.getDate() + 28);
+const deadline = new Date(`${kstDate()}T00:00:00.000Z`);
+deadline.setUTCDate(deadline.getUTCDate() + 28);
 const deadlineText = deadline.toISOString().slice(0, 10);
 const reservedStudies = [
   {
     title: '알고리즘 스터디',
     description: '주 1회 함께 알고리즘 문제를 풀이하고 풀이 방법을 나누는 스터디입니다.',
     capacity: 2,
+    status: 'ACTIVE',
+    closeReason: 'MANUAL',
     members: [{ userId: memberB.id, status: 'APPROVED', message: '알고리즘 문제 풀이에 꾸준히 참여하고 싶습니다.' }],
   },
   {
@@ -47,16 +50,16 @@ try {
     db.prepare('UPDATE users SET display_name=? WHERE username=?').run(displayName, username);
   }
   const findStudy = db.prepare('SELECT id FROM studies WHERE owner_id=? AND title=?');
-  const insertStudy = db.prepare(`INSERT INTO studies(owner_id,title,description,capacity,deadline,status)
-    VALUES(?,?,?,?,?,'RECRUITING')`);
-  const updateStudy = db.prepare(`UPDATE studies SET description=?,capacity=?,deadline=?,status='RECRUITING'
+  const insertStudy = db.prepare(`INSERT INTO studies(owner_id,title,description,capacity,deadline,status,close_reason)
+    VALUES(?,?,?,?,?,?,?)`);
+  const updateStudy = db.prepare(`UPDATE studies SET description=?,capacity=?,deadline=?,status=?,close_reason=?
     WHERE id=?`);
   for (const studySpec of reservedStudies) {
     const existing = findStudy.get(leader.id, studySpec.title);
     const studyId = existing
       ? Number(existing.id)
-      : Number(insertStudy.run(leader.id, studySpec.title, studySpec.description, studySpec.capacity, deadlineText).lastInsertRowid);
-    if (existing) updateStudy.run(studySpec.description, studySpec.capacity, deadlineText, studyId);
+      : Number(insertStudy.run(leader.id, studySpec.title, studySpec.description, studySpec.capacity, deadlineText, studySpec.status || 'RECRUITING', studySpec.closeReason || null).lastInsertRowid);
+    if (existing) updateStudy.run(studySpec.description, studySpec.capacity, deadlineText, studySpec.status || 'RECRUITING', studySpec.closeReason || null, studyId);
 
     // Only the three explicitly reserved demo studies are refreshed. Other users,
     // studies, applications, memberships, and task records are left untouched.
@@ -76,6 +79,16 @@ try {
       if (application.status === 'APPROVED') {
         db.prepare('INSERT INTO study_members(study_id,user_id) VALUES(?,?)').run(studyId, application.userId);
       }
+    }
+    if (studySpec.status === 'ACTIVE') {
+      const titles = ['데모 작업 · 배열 문제 풀이', '데모 작업 · 그래프 탐색 복습', '데모 작업 · 주간 회고'];
+      const placeholders = titles.map(() => '?').join(',');
+      db.prepare(`DELETE FROM tasks WHERE study_id=? AND title IN (${placeholders})`).run(studyId, ...titles);
+      const insertTask = db.prepare(`INSERT INTO tasks(study_id,title,description,assignee_id,status,due_date)
+        VALUES(?,?,?,?,?,?)`);
+      insertTask.run(studyId,titles[0],'기본 자료구조 문제를 함께 풀고 풀이 방법을 정리합니다.',memberB.id,'todo',deadlineText);
+      insertTask.run(studyId,titles[1],'BFS와 DFS의 차이와 시간 복잡도를 정리합니다.',leader.id,'doing',deadlineText);
+      insertTask.run(studyId,titles[2],'이번 주 학습 내용을 공유하고 다음 주 목표를 적습니다.',memberB.id,'done',deadlineText);
     }
   }
   db.exec('COMMIT');

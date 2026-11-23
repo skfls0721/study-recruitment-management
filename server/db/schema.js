@@ -9,6 +9,7 @@ export function initialize(db) {
       description TEXT NOT NULL DEFAULT '', capacity INTEGER NOT NULL CHECK(capacity > 0),
       deadline TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'RECRUITING'
         CHECK(status IN ('RECRUITING','CLOSED','ACTIVE','FINISHED','CANCELLED')),
+      close_reason TEXT CHECK(close_reason IN ('FULL','DEADLINE','MANUAL')),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS applications (
@@ -23,6 +24,7 @@ export function initialize(db) {
     );
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY, study_id INTEGER NOT NULL REFERENCES studies(id), title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
       assignee_id INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'todo'
         CHECK(status IN ('todo','doing','done')), due_date TEXT, archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -31,6 +33,13 @@ export function initialize(db) {
     CREATE INDEX IF NOT EXISTS idx_applications_study ON applications(study_id,status);
     CREATE INDEX IF NOT EXISTS idx_tasks_study ON tasks(study_id,status);`);
   const applicationColumns = db.prepare('PRAGMA table_info(applications)').all();
+  const studyColumns = db.prepare('PRAGMA table_info(studies)').all();
+  if (!studyColumns.some(column => column.name === 'close_reason')) {
+    db.exec("ALTER TABLE studies ADD COLUMN close_reason TEXT CHECK(close_reason IN ('FULL','DEADLINE','MANUAL'));");
+    db.exec("UPDATE studies SET close_reason='MANUAL' WHERE status='CLOSED'");
+  }
+  const taskColumns = db.prepare('PRAGMA table_info(tasks)').all();
+  if (!taskColumns.some(column => column.name === 'description')) db.exec("ALTER TABLE tasks ADD COLUMN description TEXT NOT NULL DEFAULT ''");
   if (!applicationColumns.some(column => column.name === 'message')) db.exec("ALTER TABLE applications ADD COLUMN message TEXT NOT NULL DEFAULT ''");
   if (!applicationColumns.some(column => column.name === 'decided_by')) db.exec('ALTER TABLE applications ADD COLUMN decided_by INTEGER REFERENCES users(id)');
   if (!applicationColumns.some(column => column.name === 'decided_at')) db.exec('ALTER TABLE applications ADD COLUMN decided_at TEXT');
@@ -42,12 +51,13 @@ export function initialize(db) {
         ALTER TABLE tasks RENAME TO tasks_before_nullable_assignee;
         CREATE TABLE tasks (
           id INTEGER PRIMARY KEY, study_id INTEGER NOT NULL REFERENCES studies(id), title TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
           assignee_id INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'todo'
             CHECK(status IN ('todo','doing','done')), due_date TEXT, archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
-        INSERT INTO tasks(id,study_id,title,assignee_id,status,due_date,archived,created_at)
-          SELECT id,study_id,title,assignee_id,status,due_date,archived,created_at FROM tasks_before_nullable_assignee;
+        INSERT INTO tasks(id,study_id,title,description,assignee_id,status,due_date,archived,created_at)
+          SELECT id,study_id,title,description,assignee_id,status,due_date,archived,created_at FROM tasks_before_nullable_assignee;
         DROP TABLE tasks_before_nullable_assignee;
         CREATE INDEX idx_tasks_study ON tasks(study_id,status);`);
       db.exec('COMMIT');

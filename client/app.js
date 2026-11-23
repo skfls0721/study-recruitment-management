@@ -12,7 +12,10 @@ const commonPasswords = new Set(['password','password1234','12345678','123456789
 const APP_LABELS = { PENDING: '대기', APPROVED: '승인', REJECTED: '거절', CANCELLED: '지원 취소', WITHDRAWN: '탈퇴' };
 const STUDY_LABELS = { RECRUITING: '모집중', CLOSED: '모집 마감', ACTIVE: '진행중', FINISHED: '종료', CANCELLED: '모집 취소' };
 const isWithinRecruitment = study => study.status === 'RECRUITING' && study.deadline >= today();
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
 
 class ApiError extends Error {
   constructor(response, body) {
@@ -241,6 +244,12 @@ $('#signupForm').addEventListener('submit', async event => {
 });
 
 function studyStatusLabel(status) { return STUDY_LABELS[status] || '상태 확인'; }
+function studyStatusText(study) {
+  const closeLabels = { FULL: '정원 마감', DEADLINE: '기간 만료', MANUAL: '스터디장 마감' };
+  return study.status === 'CLOSED' && closeLabels[study.close_reason]
+    ? `${studyStatusLabel(study.status)} · ${closeLabels[study.close_reason]}`
+    : studyStatusLabel(study.status);
+}
 function appStatusLabel(status) { return APP_LABELS[status] || '상태 확인'; }
 function dateTime(value) {
   if (!value) return '—';
@@ -248,8 +257,8 @@ function dateTime(value) {
   return Number.isNaN(parsed.valueOf()) ? String(value) : new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
 }
 function defaultDeadline() {
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + 28);
+  const deadline = new Date(`${today()}T00:00:00.000Z`);
+  deadline.setUTCDate(deadline.getUTCDate() + 28);
   return deadline.toISOString().slice(0, 10);
 }
 function updateTitleCount() {
@@ -272,7 +281,7 @@ async function loadStudies() {
       const recruiting = study.status === 'RECRUITING';
       const remaining = Math.max(0, study.capacity - study.member_count);
       return `<article class="studyCard">
-        <div class="meta"><span class="badge badge-${esc(study.status.toLowerCase())}">${esc(studyStatusLabel(study.status))}</span><span>승인 ${study.member_count}/${study.capacity}명</span>${recruiting && remaining === 1 ? '<span class="openSeat">한 자리 남음</span>' : ''}</div>
+        <div class="meta"><span class="badge badge-${esc(study.status.toLowerCase())}">${esc(studyStatusText(study))}</span><span>승인 ${study.member_count}/${study.capacity}명</span>${recruiting && remaining === 1 ? '<span class="openSeat">한 자리 남음</span>' : ''}</div>
         <h2>${esc(study.title)}</h2>
         <p class="cardDescription">${esc(study.description) || '스터디 소개가 없습니다.'}</p>
         <div class="meta"><span>스터디장 ${esc(study.owner_name)}</span><span>모집 마감 ${esc(study.deadline)}</span></div>
@@ -389,7 +398,7 @@ async function openStudy(id) {
     const canCancelApplication = myApplication?.status === 'PENDING' && isWithinRecruitment(study);
     const canDelete = applications.length === 0 && study.member_count === 0;
     const deleteVisible = own && !['FINISHED', 'CANCELLED'].includes(study.status);
-    const decisionAllowed = ['RECRUITING', 'CLOSED'].includes(study.status) && study.deadline >= today();
+    const decisionAllowed = study.status === 'RECRUITING' && study.deadline >= today();
 
     showPage({ page: 'detail' });
     const actionPanel = own ? `
@@ -430,7 +439,7 @@ async function openStudy(id) {
     container.innerHTML = `
       <article class="card detailCard">
         ${stageStepper(study.status)}
-        <div class="meta detailMeta"><span class="badge badge-${esc(study.status.toLowerCase())}">${esc(studyStatusLabel(study.status))}</span><span>승인 인원 ${study.member_count}/${study.capacity}명</span>${study.status === 'RECRUITING' ? `<span>남은 자리 ${remaining}명</span>` : ''}</div>
+        <div class="meta detailMeta"><span class="badge badge-${esc(study.status.toLowerCase())}">${esc(studyStatusText(study))}</span><span>승인 인원 ${study.member_count}/${study.capacity}명</span>${study.status === 'RECRUITING' ? `<span>남은 자리 ${remaining}명</span>` : ''}</div>
         <h1>${esc(study.title)}</h1>
         <div class="detailDescription">${esc(study.description) || '스터디 소개가 없습니다.'}</div>
         <dl class="studyFacts">
@@ -445,7 +454,7 @@ async function openStudy(id) {
       </article>
       ${actionPanel}
       ${own ? `<section class="card applicationsPanel"><div class="panelHeading"><div><p class="eyebrow">지원 현황</p><h2>지원자 관리</h2></div><span>${applications.length}명</span></div>
-        ${study.member_count >= study.capacity ? '<p class="capacityNotice" role="status">정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.</p>' : ''}
+        ${study.status === 'CLOSED' && applications.some(application => application.status === 'PENDING') ? `<p class="capacityNotice" role="status">${esc(studyStatusText(study))} 상태입니다. 남은 대기 지원은 승인할 수 없으며 스터디 시작 시 거절 처리됩니다.</p>` : study.member_count >= study.capacity ? '<p class="capacityNotice" role="status">정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.</p>' : ''}
         ${applications.length ? `<div class="applicationList">${applicationRows}</div>` : '<div class="emptyState compactEmpty">아직 지원자가 없습니다.</div>'}
       </section>` : ''}`;
 
@@ -552,8 +561,8 @@ async function loadMine() {
   }
   try {
     const [studies, applications] = await Promise.all([api('/me/studies'), api('/me/applications')]);
-    $('#myStudies').innerHTML = studies.length ? studies.map(study => `<article class="studyCard"><div class="meta"><span class="badge badge-${esc(study.status.toLowerCase())}">${esc(studyStatusLabel(study.status))}</span><span>${study.member_count}/${study.capacity}명</span></div><h2>${esc(study.title)}</h2><button type="button" data-room="${study.id}">스터디 방 열기</button><button type="button" class="buttonSecondary" data-detail="${study.id}">상세 보기</button></article>`).join('') : '<div class="emptyState"><p>참여 중인 스터디가 없습니다.</p></div>';
-    $('#myApps').innerHTML = applications.length ? applications.map(application => `<article class="studyCard"><div class="meta"><span class="statusBadge status-${esc(application.status.toLowerCase())}">${esc(appStatusLabel(application.status))}</span></div><h2>${esc(application.study_title)}</h2><p>모집 상태: ${esc(studyStatusLabel(application.study_status))}</p><button type="button" data-app-detail="${application.study_id}">모집글 보기</button>${application.status === 'PENDING' && isWithinRecruitment({ status: application.study_status, deadline: application.study_deadline }) ? `<button type="button" class="buttonSecondary" data-cancel="${application.id}">지원 취소</button>` : ''}${application.status === 'CANCELLED' && isWithinRecruitment({ status: application.study_status, deadline: application.study_deadline }) ? `<button type="button" class="buttonSecondary" data-reapply="${application.study_id}">다시 지원</button>` : ''}${application.status === 'APPROVED' ? `<button type="button" data-room="${application.study_id}">스터디 방 열기</button><button type="button" class="buttonSecondary" data-leave="${application.study_id}">스터디 탈퇴</button>` : ''}</article>`).join('') : '<div class="emptyState"><p>지원 내역이 없습니다.</p></div>';
+    $('#myStudies').innerHTML = studies.length ? studies.map(study => `<article class="studyCard"><div class="meta"><span class="badge badge-${esc(study.status.toLowerCase())}">${esc(studyStatusText(study))}</span><span>${study.member_count}/${study.capacity}명</span></div><h2>${esc(study.title)}</h2><button type="button" data-room="${study.id}">스터디 방 열기</button><button type="button" class="buttonSecondary" data-detail="${study.id}">상세 보기</button></article>`).join('') : '<div class="emptyState"><p>참여 중인 스터디가 없습니다.</p></div>';
+    $('#myApps').innerHTML = applications.length ? applications.map(application => `<article class="studyCard"><div class="meta"><span class="statusBadge status-${esc(application.status.toLowerCase())}">${esc(appStatusLabel(application.status))}</span></div><h2>${esc(application.study_title)}</h2><p>모집 상태: ${esc(studyStatusText({ status: application.study_status, close_reason: application.study_close_reason }))}</p><button type="button" data-app-detail="${application.study_id}">모집글 보기</button>${application.status === 'PENDING' && isWithinRecruitment({ status: application.study_status, deadline: application.study_deadline }) ? `<button type="button" class="buttonSecondary" data-cancel="${application.id}">지원 취소</button>` : ''}${application.status === 'CANCELLED' && isWithinRecruitment({ status: application.study_status, deadline: application.study_deadline }) ? `<button type="button" class="buttonSecondary" data-reapply="${application.study_id}">다시 지원</button>` : ''}${application.status === 'APPROVED' ? `<button type="button" data-room="${application.study_id}">스터디 방 열기</button><button type="button" class="buttonSecondary" data-leave="${application.study_id}">스터디 탈퇴</button>` : ''}</article>`).join('') : '<div class="emptyState"><p>지원 내역이 없습니다.</p></div>';
     $$('[data-room]').forEach(button => button.addEventListener('click', () => navigate('room', { id: Number(button.dataset.room) })));
     $$('[data-detail], [data-app-detail]').forEach(button => button.addEventListener('click', () => navigate('detail', { id: Number(button.dataset.detail || button.dataset.appDetail) })));
     $$('[data-cancel]').forEach(button => button.addEventListener('click', () => mutate(`/applications/${button.dataset.cancel}/cancel`, '지원 취소', button)));
@@ -571,15 +580,24 @@ async function mutate(path, label, button) {
 
 async function openRoom(id) {
   try {
-    const [study, tasks, progress, members] = await Promise.all([
-      api(`/studies/${id}`), api(`/studies/${id}/tasks`), api(`/studies/${id}/progress`), api(`/studies/${id}/members`)
+    const [study, tasks, progress, participants] = await Promise.all([
+      api(`/studies/${id}`), api(`/studies/${id}/tasks`), api(`/studies/${id}/progress`), api(`/studies/${id}/participants`)
     ]);
     currentStudy = study;
+    const owner = me?.id === study.owner_id;
+    const canManageTasks = study.status === 'ACTIVE';
+    const visibleTasks = tasks.filter(task => !task.archived);
+    const archivedTasks = tasks.filter(task => task.archived);
+    const participantList = participants.map(person => `<li><strong>${esc(person.display_name)}</strong><span>${person.role === 'OWNER' ? '스터디장' : '멤버'} · 담당 작업 ${person.assigned_task_count}개</span></li>`).join('');
+    const taskCard = task => `<article class="taskCard"><div class="taskCardHeading"><strong>${esc(task.title)}</strong><span class="statusBadge status-task-${esc(task.status)}">${({ todo: '할 일', doing: '진행 중', done: '완료' })[task.status] || '상태 확인'}</span></div>${task.description ? `<p class="taskDescription">${esc(task.description)}</p>` : ''}<p class="taskMeta">${esc(task.assignee_name || '미배정')} · 마감 ${esc(task.due_date || '없음')}${task.archived ? ' · 보관됨' : ''}</p>${canManageTasks && !task.archived ? `<div class="row taskActions">${task.status !== 'done' ? `<button type="button" data-next="${task.id}" data-status="${task.status === 'todo' ? 'doing' : 'done'}">${task.status === 'todo' ? '진행 시작' : '완료'}</button>` : ''}<button type="button" class="buttonSecondary" data-delete-task="${task.id}">${task.status === 'todo' ? '삭제' : '보관'}</button></div>` : ''}</article>`;
+    const columns = [
+      ['todo', '할 일'], ['doing', '진행 중'], ['done', '완료']
+    ].map(([status, label]) => `<section class="taskColumn" aria-label="${label} 작업"><div class="taskColumnHeading"><h3>${label}</h3><span>${visibleTasks.filter(task => task.status === status).length}</span></div>${visibleTasks.filter(task => task.status === status).map(taskCard).join('') || '<p class="taskColumnEmpty">작업이 없습니다.</p>'}</section>`).join('');
     showPage({ page: 'room' });
-    $('#room').innerHTML = `<p class="eyebrow">스터디 작업 공간</p><h1>${esc(study.title)}</h1><div class="roomMembers"><strong>멤버</strong><span>${members.length ? members.map(member => esc(member.display_name)).join(' · ') : '아직 없습니다'}</span></div>
+    $('#room').innerHTML = `<p class="eyebrow">스터디 작업 공간</p><h1>${esc(study.title)}</h1><p class="roomStudyState">현재 상태: ${esc(studyStatusText(study))}</p><section class="card participantPanel"><h2>스터디 참여자</h2><ul class="participantList">${participantList}</ul></section>
       <section class="card progressCard"><div class="row progressHeading"><strong>진행률</strong><span>${progress.percentage}% · ${progress.done}/${progress.total} 완료</span></div><div class="progress" role="progressbar" aria-valuenow="${progress.percentage}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percentage}%"></span></div></section>
-      ${study.status === 'ACTIVE' ? '<form id="newTask" class="card taskForm"><h2>작업 등록</h2><label for="taskTitle">작업 제목</label><input id="taskTitle" name="title" maxlength="120" required><label for="taskDueDate">마감일 <span class="optionalLabel">선택</span></label><input id="taskDueDate" name="dueDate" type="date"><p class="fieldError" data-error-for="task"></p><button type="submit">작업 추가</button></form>' : ''}
-      <section class="card taskBoard"><h2>작업 보드</h2>${tasks.length ? tasks.map(task => `<article class="taskRow"><div><strong>${esc(task.title)}</strong><p>${esc(task.assignee_name || '미배정')} · 마감 ${esc(task.due_date || '없음')}${task.archived ? ' · 보관됨' : ''}</p></div><div class="row"><span class="statusBadge status-task-${esc(task.status)}">${({ todo: '할 일', doing: '진행 중', done: '완료' })[task.status] || '상태 확인'}</span>${!['FINISHED','CANCELLED'].includes(study.status) && task.status !== 'done' && !task.archived ? `<button type="button" data-next="${task.id}" data-status="${task.status === 'todo' ? 'doing' : 'done'}">${task.status === 'todo' ? '진행 시작' : '완료'}</button>` : ''}${!['FINISHED','CANCELLED'].includes(study.status) && !task.archived ? `<button type="button" class="buttonSecondary" data-delete-task="${task.id}">${task.status === 'todo' ? '삭제' : '보관'}</button>` : ''}</div></article>`).join('') : '<div class="emptyState compactEmpty"><p>등록된 작업이 없습니다.</p></div>'}</section>`;
+      ${canManageTasks ? `<form id="newTask" class="card taskForm"><h2>작업 등록</h2><label for="taskTitle">작업 제목 <span class="requiredMark">필수</span></label><input id="taskTitle" name="title" maxlength="120" required><label for="taskDescription">설명 <span class="optionalLabel">선택</span></label><textarea id="taskDescription" name="description" maxlength="1000" rows="3"></textarea><label for="taskDueDate">마감일 <span class="optionalLabel">선택</span></label><input id="taskDueDate" name="dueDate" type="date">${owner ? `<label for="taskAssignee">담당자 <span class="optionalLabel">선택</span></label><select id="taskAssignee" name="assigneeId">${participants.map(person => `<option value="${person.id}" ${person.id === study.owner_id ? 'selected' : ''}>${esc(person.display_name)} (${person.role === 'OWNER' ? '스터디장' : '멤버'})</option>`).join('')}</select>` : '<p class="helpText">등록한 작업은 기본으로 본인이 담당합니다.</p>'}<p class="fieldError" data-error-for="task"></p><button type="submit">작업 추가</button></form>` : `<p class="actionMessage">${study.status === 'FINISHED' || study.status === 'CANCELLED' ? '종료된 스터디는 읽기 전용입니다.' : '스터디장이 시작하면 작업을 등록하고 진행할 수 있습니다.'}</p>`}
+      ${!tasks.length ? '<div class="emptyState compactEmpty"><p>등록된 작업이 없습니다.</p></div>' : ''}<section class="taskBoard"><h2>작업 보드</h2><div class="taskColumns">${columns}</div></section>${archivedTasks.length ? `<section class="card archivedTasks"><h2>보관한 작업</h2>${archivedTasks.map(taskCard).join('')}</section>` : ''}`;
     $('#newTask')?.addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;

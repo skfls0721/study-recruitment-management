@@ -11,9 +11,10 @@ export function createApp({db,secret=process.env.JWT_SECRET||'local-only-secret-
   app.get('/api/health',(_q,r)=>r.json({status:'ok'}));
   app.post('/api/auth/signup',(q,r)=>r.status(201).json(auth.signup(q.body)));
   app.post('/api/auth/login',(q,r)=>r.json(auth.login(q.body)));
-  app.get('/api/studies',(q,r)=>{const search=String(q.query.search||'').trim().slice(0,100),sort=String(q.query.sort||'latest');r.json(repo.studies({search,sort}));});
-  app.get('/api/studies/:id',(q,r)=>{const s=repo.study(id(q.params.id));if(!s)throw missing('모집글');r.json({...s,applications:(q.user?.id===s.owner_id?repo.forStudy(s.id):undefined)});});
+  app.get('/api/studies',(q,r)=>{repo.closeExpiredStudies();const search=String(q.query.search||'').trim().slice(0,100),sort=String(q.query.sort||'latest');r.json(repo.studies({search,sort}));});
+  app.get('/api/studies/:id',(q,r)=>{const studyId=id(q.params.id);repo.closeExpiredStudy(studyId);const s=repo.study(studyId);if(!s)throw missing('모집글');r.json({...s,applications:(q.user?.id===s.owner_id?repo.forStudy(s.id):undefined)});});
   app.get('/api/studies/:id/members',auth.middleware,(q,r)=>{const studyId=id(q.params.id),s=repo.study(studyId);if(!s)throw missing('스터디');if(s.owner_id!==q.user.id&&!repo.isMember(studyId,q.user.id))throw forbidden();r.json(repo.members(studyId));});
+  app.get('/api/studies/:id/participants',auth.middleware,(q,r)=>{const studyId=id(q.params.id),s=repo.study(studyId);if(!s)throw missing('스터디');if(s.owner_id!==q.user.id&&!repo.isMember(studyId,q.user.id))throw forbidden();r.json(repo.participants(studyId));});
   app.post('/api/studies',auth.middleware,(q,r)=>r.status(201).json(service.createStudy(q.user,q.body)));
   app.patch('/api/studies/:id',auth.middleware,(q,r)=>r.json(service.updateStudy(q.user,id(q.params.id),q.body)));
   app.patch('/api/studies/:id/status',auth.middleware,(q,r)=>r.json(service.changeStudyStatus(q.user,id(q.params.id),q.body?.status)));
