@@ -3,7 +3,7 @@
 웹서비스설계 한국어 분반 · 2026학년도 2학기 · 개인 프로젝트
 작성 기준일: 2026-11-23 · 제출 마감: 2026-12-18 23:59 (한국 시간)
 
-> 이 보고서는 제출된 코드와 2026-11-20 검증 기록을 기준으로 작성했다. 캡처·영상처럼 이 파일을 작성할 때 확인할 수 없는 항목은 미확인으로 표시했다. 비밀번호와 비밀키는 기록하지 않았다.
+> 이 보고서는 StudyBoard 코드 변경과 2026-11-23 자동 테스트 기록을 기준으로 갱신했다. 아직 배포하지 않은 코드의 JCloud 동작과 캡처·영상처럼 확인하지 않은 항목은 미확인으로 표시했다. 비밀번호와 비밀키는 기록하지 않았다.
 
 ## 0. 제출 정보와 채점기준 대응표
 
@@ -13,7 +13,7 @@
 | 서비스명 | StudyBoard (스터디 모집·관리 서비스) |
 | 기술 조합과 버전 | Node.js 24.x, Express 5, SQLite (`node:sqlite`), JWT, bcryptjs, HTML/CSS/JavaScript, Vitest 5.1.0 + Supertest |
 | GitHub URL | https://github.com/skfls0721/study-recruitment-management |
-| 코드 기준 SHA | `abd3d719f36a295c16fb109a71e2c87d43fca4d0` (보고서 편집 직전 코드 버전; 보고서 전용 최종 커밋 SHA는 LMS에 별도 기록) |
+| 코드 기준 SHA | `1cb71dd9324c7da1388b5a73db587de5a4d87772` (기능 구현 커밋; LMS에는 문서를 포함한 최종 `main` SHA를 기재) |
 | JCloud 접속 주소 | http://s.jedutools.io:40141 |
 | 시연 영상 링크 | 미제출. 촬영·공개 링크 설정 후 LMS에 기재 |
 | 역할별 테스트 계정 | `leaderA`, `leaderB`, `memberC`; 비밀번호는 LMS 제출란에서만 제공 |
@@ -37,9 +37,9 @@
 | 회원가입·로그인 | 완료 | `server/auth.js`, `server/password-policy.js` | bcrypt 해시, JWT 2시간, 사용자 ID는 토큰에서 복원 |
 | 모집글 등록·조회·수정·삭제·취소 | 완료 | `server/app.js`, `server/services/study-service.js` | 활동 이력이 있으면 삭제 409, 모집중·승인 멤버 없음이면 취소 가능 |
 | 지원·지원 취소·재지원 | 완료 | `server/services/study-service.js` | 취소 상태 행을 재사용; 거절·승인 후 재지원은 불가 |
-| 승인·거절·정원 검사 | 완료 | `server/services/study-service.js` | 트랜잭션과 최신 정원 재확인 |
+| 승인·거절·정원 검사 | 완료 | `server/services/study-service.js` | 트랜잭션·최신 정원 재확인; 마지막 자리 승인 시 `CLOSED/FULL` 자동 마감 |
 | 멤버 탈퇴 | 완료 | `server/services/study-service.js` | 지원 상태·멤버십·작업 담당자를 트랜잭션 처리 |
-| 스터디 방 작업 관리 | 완료 | `server/services/study-service.js`, `client/app.js` | `todo → doing → done`; 정방향만 허용 |
+| 스터디 방 작업 관리 | 완료 | `server/services/study-service.js`, `client/app.js` | 진행 중인 스터디의 3열 보드; `todo → doing → done`; 역할·담당자 규칙 적용 |
 | 진행률 표시 | 완료 | `server/services/study-service.js` | `done / 전체`; 작업 0개는 0%, 보관된 완료 작업 포함 |
 | 새로고침·서버 재시작 후 데이터 유지 | 완료 | `server/db/index.js`, JCloud 설정 | 파일 기반 SQLite; 재시작 후 데모 데이터 유지 확인 |
 
@@ -59,10 +59,10 @@ USERS 0 ── N TASKS N ── 1 STUDIES (assignee_id는 NULL 허용)
 | 테이블 | 주요 컬럼 | 제약조건과 설명 |
 |---|---|---|
 | `users` | `id, username, display_name, password_hash, created_at` | `username UNIQUE`; 비밀번호 bcrypt 해시만 저장 |
-| `studies` | `id, owner_id, title, description, capacity, deadline, status, created_at` | 정원 1~100; 상태 CHECK; 스터디장은 정원에 미포함 |
+| `studies` | `id, owner_id, title, description, capacity, deadline, status, close_reason, created_at` | 정원 1~100; 상태·마감 사유 CHECK; 스터디장은 정원에 미포함 |
 | `applications` | `id, study_id, user_id, status, message, decided_by, decided_at, created_at` | `UNIQUE(study_id,user_id)`; 취소 후 재지원은 기존 행을 대기로 복구 |
 | `study_members` | `study_id, user_id, joined_at` | 복합 기본키; 승인된 멤버 수로 정원 계산 |
-| `tasks` | `id, study_id, title, assignee_id, status, due_date, archived, created_at` | 상태 CHECK; 담당자 NULL은 멤버 탈퇴 후 미배정 의미 |
+| `tasks` | `id, study_id, title, description, assignee_id, status, due_date, archived, created_at` | 상태 CHECK; 담당자 NULL은 멤버 탈퇴 후 미배정 의미 |
 
 스키마 정의와 이전 DB를 위한 컬럼 추가·작업 담당자 nullable 마이그레이션은 `server/db/schema.js`에 있다. 정원 숫자를 별도 중복 저장하지 않고 `study_members`를 세어 승인과 정원 값의 불일치 가능성을 줄였다.
 
@@ -73,25 +73,27 @@ USERS 0 ── N TASKS N ── 1 STUDIES (assignee_id는 NULL 허용)
 | R1 신원 | 사용자 ID는 요청 본문이 아니라 JWT subject에서 가져온다 | `server/auth.js` `middleware`; `server/app.js` |
 | R2 권한 | 승인·거절·상태 변경·수정·삭제는 소유자, 지원 취소는 본인, 작업은 멤버 기준 | `server/services/study-service.js` `owner`, `member`; `server/app.js` |
 | R3 중복 | 스터디별 사용자 지원 1건; 취소 상태만 재지원 허용 | 서비스 `apply`; DB UNIQUE |
-| R4 모집글 상태 | 모집중→마감→진행중→종료; 모집중→취소 | 서비스 `STUDY_TRANSITIONS` |
+| R4 모집글 상태 | 모집중→마감→진행중→종료; 모집중→취소. 정원·KST 기간 만료는 자동 마감 | 서비스 `STUDY_TRANSITIONS`, 저장소 `closeExpiredStudy(ies)` |
 | R5 지원서 상태 | 대기→승인·거절·취소; 승인→탈퇴; 취소→대기 재지원 | 서비스 `apply`, `decide`, `withdrawApplication` |
 | R6 정원 | 승인 시 트랜잭션 안에서 현재 멤버 수와 정원 재확인 | 서비스 `decide`, `BEGIN IMMEDIATE` |
 | R7 삭제 정책 | 지원서 또는 멤버 이력이 있으면 삭제 거절; 삭제 대신 취소 가능 여부 안내 | 서비스 `deleteStudy`, `changeStudyStatus` |
 | R8 작업 상태 | todo→doing→done만 허용; todo만 삭제, 나머지는 보관 | 서비스 `updateTask`, `deleteTask` |
-| R9 원자성 | 승인, 모집글 취소, 멤버 탈퇴를 단일 트랜잭션 처리 | 서비스 `tx`, `decide`, `changeStudyStatus`, `leaveStudy` |
+| R9 원자성 | 승인·정원 자동 마감, 모집글 취소·시작, 멤버 탈퇴를 단일 트랜잭션 처리 | 서비스 `tx`, `decide`, `changeStudyStatus`, `leaveStudy` |
+| R10 마감 사유·날짜 | `FULL/DEADLINE/MANUAL`; 마감일 당일 23:59:59 KST까지 유효; 멤버 탈퇴 후 자동 재개하지 않음 | `studies.close_reason`, `server/kst-date.js`, 저장소 만료 갱신 |
 
 ### 2.3 상태전이도
 
 ```text
-모집글: 모집중 --스터디장 마감--> 마감 --스터디장 시작/승인 멤버 1명 이상--> 진행중
+모집글: 모집중 --정원 충족(FULL) / 다음 KST 날짜(DEADLINE) / 스터디장 수동 마감(MANUAL)--> 마감
+        마감 --스터디장 시작/승인 멤버 1명 이상--> 진행중 --스터디장 종료--> 종료
         모집중 --스터디장 취소/승인 멤버 없음--> 취소
-        진행중 --스터디장 종료--> 종료
         종료·취소에서는 추가 변경 불가
+        시작 때 남은 대기 지원은 REJECTED로 일괄 변경
 
 지원서: 대기 --스터디장 승인/정원 여유--> 승인 --멤버 본인 탈퇴--> 탈퇴
         대기 --스터디장 거절--> 거절 | 대기 --지원자 취소--> 취소 --모집 중 재지원--> 대기
 
-작업: todo --> doing --> done (건너뛰기와 역방향은 거절; doing/done 삭제는 보관)
+작업: 진행중 스터디에서 todo --> doing --> done (건너뛰기와 역방향은 거절; doing/done 삭제는 보관)
 ```
 
 전이는 `server/services/study-service.js` 서비스 계층에서 검사한다. 요청 경로와 ID 형식은 `server/app.js`, 토큰 검증은 `server/auth.js`에서 처리한다. 실패는 입력 400, 인증 401, 권한 403, 존재하지 않는 자원 404, 상태·중복 충돌 409로 JSON `{code,message}`에 담긴다.
@@ -101,15 +103,16 @@ USERS 0 ── N TASKS N ── 1 STUDIES (assignee_id는 NULL 허용)
 | 메서드·경로 | 역할 | 인증 | 권한·상태 조건 | 실패 예 |
 |---|---|---|---|---|
 | `POST /api/auth/signup`, `/login` | 가입·로그인 | 불필요 | 입력 유효, 로그인 정보 일치 | 400, 409, 401 |
-| `GET /api/studies`, `GET /api/studies/:id` | 공개 목록·상세 | 불필요 | 존재하지 않는 상세 ID는 404 | 404 |
+| `GET /api/studies`, `GET /api/studies/:id` | 공개 목록·상세 | 불필요 | 마감일 경과 시 `CLOSED/DEADLINE` 갱신; 없는 ID는 404 | 404 |
 | `POST /api/studies`, `PATCH /api/studies/:id` | 등록·수정 | 필요 | 수정은 소유자·모집중·정원 하한 | 400, 403, 409 |
-| `PATCH /api/studies/:id/status`, `DELETE /api/studies/:id` | 마감·시작·종료·취소·삭제 | 필요 | 소유자, 정의된 전이; 삭제는 이력 없음 | 403, 409 |
+| `PATCH /api/studies/:id/status`, `DELETE /api/studies/:id` | 마감·시작·종료·취소·삭제 | 필요 | 소유자, 정의된 전이; 시작 때 대기 거절; 삭제는 이력 없음 | 403, 409 |
 | `POST /api/studies/:id/applications` | 지원 | 필요 | 본인 글 아님·모집중·마감 전·중복 아님 | 403, 409 |
-| `PATCH /api/applications/:id/approve`, `/reject` | 승인·거절 | 필요 | 해당 소유자, 대기 상태; 승인은 정원·마감 검사 | 403, 409 |
+| `PATCH /api/applications/:id/approve`, `/reject` | 승인·거절 | 필요 | 해당 소유자, 대기 상태; 승인 가능한 상태는 모집중, 마지막 자리는 FULL 자동 마감 | 403, 409 |
 | `PATCH /api/applications/:id/cancel` | 지원 취소 | 필요 | 지원자 본인, 대기·모집 기간 | 403, 409 |
 | `GET /api/me/applications`, `/api/me/studies` | 내 활동 | 필요 | 토큰 사용자 소유 데이터 | 401 |
-| `GET/POST /api/studies/:id/tasks` | 작업 조회·등록 | 필요 | 소유자 또는 승인 멤버; 종료 전 | 403, 409 |
-| `PATCH /api/tasks/:id/status`, `DELETE /api/tasks/:id` | 진행·삭제/보관 | 필요 | 담당자 또는 소유자; 정방향 상태 | 403, 409 |
+| `GET /api/studies/:id/participants` | 스터디 참여자·역할·담당 작업 수 | 필요 | 스터디장 또는 멤버 | 401, 403, 404 |
+| `GET/POST /api/studies/:id/tasks` | 작업 조회·등록 | 필요 | 소유자 또는 승인 멤버; 생성은 ACTIVE 상태 | 403, 409 |
+| `PATCH /api/tasks/:id/status`, `DELETE /api/tasks/:id` | 진행·삭제/보관 | 필요 | 담당자 또는 소유자; ACTIVE·정방향 상태 | 403, 409 |
 | `PATCH /api/studies/:id/leave`, `GET /api/studies/:id/progress` | 탈퇴·진행률 | 필요 | 본인 멤버, 작업 접근 멤버 | 403, 409 |
 
 서버는 인증 → 대상 존재 → 권한 → 입력·상태 조건 → 저장 순으로 확인한다. Express 라우트가 인증을 적용하고 서비스 계층이 소유권·상태·정원을 최종 검사한다. 여러 행 변경은 `BEGIN IMMEDIATE`와 COMMIT/ROLLBACK으로 묶는다.
@@ -177,20 +180,17 @@ catch(e){if(String(e.message).includes('UNIQUE'))throw conflict('이미 지원�
 파일·함수: `server/services/study-service.js` `tx`, `decide`.
 
 ```js
-const tx=(fn)=>{db.exec('BEGIN IMMEDIATE');try{const value=fn();db.exec('COMMIT');return value;}catch(e){try{db.exec('ROLLBACK')}catch{}throw e;}};
-decide(user,applicationId,decision) { return tx(()=>{
-  const a=repo.application(applicationId);if(!a)throw missing('지원서');const s=repo.study(a.study_id);owner(user,s);
-  if(a.status!=='PENDING')throw conflict('대기 상태 지원서만 처리할 수 있습니다.');
-  if(decision==='approve') {if(!['RECRUITING','CLOSED'].includes(s.status))throw conflict('모집 중 또는 마감 상태에서만 승인할 수 있습니다.');
-    if(s.deadline<new Date().toISOString().slice(0,10))throw conflict('마감일이 지난 지원서는 승인할 수 없습니다.');
-    if(repo.memberCount(s.id)>=s.capacity)throw conflict('정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.');
-    db.prepare("UPDATE applications SET status='APPROVED',decided_by=?,decided_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'").run(user.id,a.id);
-    db.prepare('INSERT INTO study_members(study_id,user_id) VALUES(?,?)').run(s.id,a.user_id);}
-  return repo.application(a.id);
-});},
+if (decision === 'approve') {
+  if (s.status !== 'RECRUITING') throw conflict('모집이 마감되어 승인을 처리할 수 없습니다.');
+  if (repo.memberCount(s.id) >= s.capacity) throw conflict('정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.');
+  db.prepare("UPDATE applications SET status='APPROVED',decided_by=?,decided_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'").run(user.id,a.id);
+  db.prepare('INSERT INTO study_members(study_id,user_id) VALUES(?,?)').run(s.id,a.user_id);
+  if (repo.memberCount(s.id) >= s.capacity)
+    db.prepare("UPDATE studies SET status='CLOSED',close_reason='FULL' WHERE id=? AND status='RECRUITING'").run(s.id);
+}
 ```
 
-실제 코드는 `BEGIN IMMEDIATE` 내부에서 지원서와 스터디를 읽고 소유자·대기 상태·스터디 상태·마감일·현재 정원을 재검사한 다음 지원서 승인과 멤버 추가를 함께 수행한다. 중간 INSERT가 실패하면 롤백되어 지원서는 대기로 남는다. 성공은 200, 정원·상태 충돌은 409, 타 스터디장 요청은 403이다.
+실제 코드에서는 `BEGIN IMMEDIATE` 내부에서 지원서·스터디·소유권·대기 상태·모집중 상태·현재 인원을 다시 확인한다. 승인, 멤버 추가, 마지막 자리에서 `CLOSED/FULL` 갱신은 같은 트랜잭션이다. 마감 갱신을 강제 실패시킨 테스트에서 모든 변경이 롤백되었다. KST 날짜가 지난 글은 승인 전에 `CLOSED/DEADLINE`으로 바꾼 뒤 거절한다. 성공은 200, 상태·정원 충돌은 409, 타 스터디장 요청은 403이다.
 
 ### 3.5 모집글 취소·삭제와 멤버 탈퇴
 
@@ -201,7 +201,7 @@ const tx=(fn)=>{db.exec('BEGIN IMMEDIATE');try{const value=fn();db.exec('COMMIT'
 changeStudyStatus(user,id,status) {return tx(()=>{const s=repo.study(id);if(!s)throw missing('모집글');owner(user,s);
   if(!STUDY_TRANSITIONS[s.status]?.includes(status))throw conflict('허용되지 않은 모집글 상태 변경입니다.');
   if(status==='CANCELLED'&&repo.memberCount(id)>0)throw conflict('승인된 멤버가 있으면 취소할 수 없습니다.');
-  if(status==='CANCELLED')db.prepare("UPDATE applications SET status='REJECTED',decided_by=?,decided_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE study_id=? AND status='PENDING'").run(user.id,id);
+  if(status==='CANCELLED'||status==='ACTIVE')db.prepare("UPDATE applications SET status='REJECTED',decided_by=?,decided_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE study_id=? AND status='PENDING'").run(user.id,id);
   db.prepare('UPDATE studies SET status=? WHERE id=?').run(status,id);return repo.study(id);});},
 leaveStudy(user,studyId) {return tx(()=>{if(!repo.study(studyId))throw missing('스터디');return withdrawApplication(user,repo.applicationForUserStudy(studyId,user.id));});},
 ```
@@ -216,12 +216,12 @@ leaveStudy(user,studyId) {return tx(()=>{if(!repo.study(studyId))throw missing('
 const TASK_NEXT = {todo:'doing', doing:'done', done:null};
 updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');const s=repo.study(t.study_id);member(user,s.id);
   if(user.id!==t.assignee_id&&user.id!==s.owner_id)throw forbidden();
-  if(['FINISHED','CANCELLED'].includes(s.status))throw conflict('종료된 스터디에서는 작업을 변경할 수 없습니다.');
+  if(s.status!=='ACTIVE')throw conflict('스터디 진행 중에만 작업 상태를 변경할 수 있습니다.');
   if(TASK_NEXT[t.status]!==status)throw conflict('작업 상태는 todo → doing → done 순서로만 변경할 수 있습니다.');
   db.prepare('UPDATE tasks SET status=? WHERE id=?').run(status,id);return repo.task(id);},
 ```
 
-작업 상태 변경은 담당자 또는 스터디장만 가능하다. `todo`는 삭제하고 `doing`·`done`은 보관 표시해 이력을 남긴다. 진행률은 전체 작업 중 `done` 개수의 비율이며 작업이 없으면 0%다. 현재 구현의 진행률 쿼리는 보관 여부와 무관하게 `done`을 포함한다.
+작업 상태 변경은 담당자 또는 스터디장만 가능하고 스터디가 `ACTIVE`일 때만 수행한다. 화면은 todo/doing/done 3개 열로 표시하며 참여자별 역할과 담당 중인 미보관 작업 수도 조회한다. 회원은 본인을 담당자로 지정하고 스터디장은 참여자 중 선택할 수 있다. `todo`는 삭제하고 `doing`·`done`은 보관 표시해 이력을 남긴다. 진행률은 전체 작업 중 `done` 개수의 비율이며 작업이 없으면 0%다. 보관 여부와 무관하게 `done`을 포함한다.
 
 ### 3.7 재사용 코드와 변경 내역
 
@@ -235,7 +235,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 
 ## 4. 테스트 결과
 
-실행 환경은 Node.js 24.x, Vitest 5.1.0, Supertest, 메모리 SQLite다. 2026-11-20 JCloud에서 `npm test`를 실행해 **33개 통과**했고, `npm audit --omit=dev`는 취약점 0건이었다. 아래는 실제 자동화 범위를 기준으로 정리했다. “미실행”은 실패가 아니라 해당 개별 시나리오를 별도 테스트로 입증하지 않았다는 뜻이다.
+실행 환경은 Node.js 24.x, Vitest 5.1.0, Supertest, 메모리 SQLite다. 2026-11-23 작업본에서 `npm test`를 실행해 **39개 모두 통과**했다. 이번 변경은 아직 JCloud에 배포하지 않았으므로 새 코드의 배포 결과로 해석하지 않는다. `npm audit --omit=dev`의 기존 결과는 취약점 0건이다. 아래는 자동화 범위를 기준으로 정리했으며 “미실행”은 실패가 아니라 해당 시나리오를 별도 테스트로 입증하지 않았다는 뜻이다.
 
 ### 4.1 정상·인증·권한 (T01–T08)
 
@@ -276,7 +276,18 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 | T23 작업 삭제·보관 | todo 삭제, doing/done 삭제 요청 | todo 제거, 진행 중/완료 보관 | 보관 플래그 확인, done은 진행률 포함 | PASS |
 | T24 진행률 경계 | 작업 0개 및 완료 작업 | 0%·100% | 0%, 완료 후 100% | PASS |
 
-### 4.4 일관성·롤백 (T25–T28)
+### 4.4 자동 마감 추가 검증 (T29–T32)
+
+| ID / 상황 | 준비 상태와 동작 | 예상 결과 | 실제 결과 | 판정 |
+|---|---|---|---|---|
+| T29 정원 충족 자동 마감 | 모집중·정원 1·대기 지원 1건을 승인 | 승인, 멤버 추가, `CLOSED/FULL` 한 번에 커밋 | 200; DB에서 승인 1건·멤버 1명·`CLOSED/FULL` 재조회. 닫기 UPDATE 오류 주입 시 지원 PENDING·멤버 0·모집중으로 롤백 | PASS |
+| T30 KST 마감 시각 | KST 날짜 끝 직전/다음 날짜 시작 시각을 변환하고 지난 날짜 글 상세 조회 | 해당 날짜 23:59:59까지 유효, 다음 날짜 첫 요청에서 `CLOSED/DEADLINE` | UTC 14:59:59는 해당 KST 날짜, 15:00:00은 다음 날; 조회 후 DB 사유 확인 | PASS |
+| T31 기간 만료 후 지원 | 과거 마감일의 모집글에 새 회원이 지원 | 409, 자동 마감, 새 지원 행 없음 | 409; DB의 `CLOSED/DEADLINE`, 지원 0건 확인 | PASS |
+| T32 이미 마감된 글 수동 마감 | 자동 FULL 마감된 글을 다시 수동 마감 | 409, 원래 마감 사유 보존 | 409; DB의 `CLOSED/FULL` 유지 | PASS |
+| 시작 시 대기 지원·역할 목록 | 승인자·대기 지원자가 있는 모집 시작, 참여자 조회 | 대기 지원 거절; OWNER/MEMBER 및 담당 작업 수 표시 | 대기 건 `REJECTED`; 참여자 역할·작업 수 재조회 | PASS |
+| 작업 생성 권한·배정 | 모집 마감 전 생성, 회원의 타인 배정, 스터디장의 멤버 배정 | 상태 409, 타인 배정 403, 허용 작업·담당 수 저장 | 응답 코드와 작업 설명·담당 ID·참여자 담당 수 확인 | PASS |
+
+### 4.5 일관성·롤백 (T25–T28)
 
 | ID / 상황 | 준비 상태와 동작 | 예상 결과 | 실제 결과 | 판정 |
 |---|---|---|---|---|
@@ -285,7 +296,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 | T27 탈퇴 중 오류 | 탈퇴 처리 중 오류 주입 | 세 변경 모두 원복 | 별도 오류 주입 테스트 없음 | 미실행 |
 | T28 서버 재시작 | systemd 재시작 후 영속 DB 확인 | 상태·이력 유지 | JCloud 재시작 후 데이터 유지 확인 기록 | PASS (수동) |
 
-추가 자동 검증으로 `Promise.all` 동시 승인, 수정 권한·정원 하한, 시작·종료 순서, 마감일 경과 지원, 비멤버 조회, 레거시 DB 마이그레이션, 지원 메시지·처리 이력이 있다. `node:sqlite` 동기 API와 단일 프로세스 테스트 환경이므로 `Promise.all`은 다중 프로세스 부하 경합을 입증하지 않는다. 실제 분산 부하 테스트는 하지 않았다.
+추가 자동 검증으로 `Promise.all` 동시 승인, 수정 권한·정원 하한, 시작·종료 순서, 비멤버 조회, 레거시 DB 마이그레이션, 지원 메시지·처리 이력, 시작 시 대기 건 거절, 참여자 역할·담당 작업 수가 있다. `node:sqlite` 동기 API와 단일 프로세스 테스트 환경이므로 `Promise.all`은 다중 프로세스 부하 경합을 입증하지 않는다. 실제 분산 부하 테스트는 하지 않았다.
 
 **거부 사례 상세 (T14):** 정원 1인 모집글에 회원 두 명의 지원서를 준비했다. 첫 지원 승인 후 두 번째 승인 응답은 409 `CONFLICT`와 “정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.”를 반환했다. 테스트는 재조회로 멤버가 1명이고 두 번째 지원이 대기 상태임을 확인한다.
 
@@ -301,6 +312,8 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 | U04 | 작업 추가 → doing → done → 진행률, 새로고침 | API 흐름과 진행률 자동 검증 PASS; 배포 브라우저에서 새로고침 시각 증거 미확인 |
 | U05 | 멤버 탈퇴 후 미배정 | API 테스트에서 담당자 NULL과 표시 데이터 확인 PASS; 화면 캡처 미첨부 |
 | U06 | 서버 재시작 후 데이터 유지 | JCloud에서 재시작 후 DB 유지 확인 기록 있음; 새 캡처는 미첨부 |
+| U07 | 마지막 자리를 승인해 정원 자동 마감 | 자동 테스트 T29에서 DB 상태·사유 확인 PASS; 브라우저 캡처 및 새 JCloud 반영은 미확인 |
+| U08 | 활성 스터디 방 3열 작업 보드·참여자 역할·담당 작업 수 | API 테스트와 클라이언트 코드 반영; 배포 브라우저와 휴대폰에서 직접 확인 필요 |
 
 브라우저의 실제 화면 검증, Network 탭의 배포 origin 캡처, 모바일 데이터망에서의 전체 기능 확인은 제출 전 추가 증거가 필요하다. 저장소에는 캡처를 임의 생성하거나 실제 확인으로 가장하지 않았다.
 
@@ -314,6 +327,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 | 허용되지 않은 상태 변경 | 상태 전이표와 날짜·정원 조건을 서비스 계층에서 검사 | T12, T14–T15, T22 |
 | 부분 저장 방지 | 승인·취소·탈퇴를 트랜잭션으로 처리 | T25–T27 |
 | 삭제할 수 없는 데이터 | 모집글은 지원·멤버 이력이 있으면 409; 대안으로 조건부 취소; 작업은 todo 삭제 외 보관 | T17–T20, T23 |
+| 자동 모집 마감 | 정원 충족은 승인 트랜잭션, 기간 만료는 다음 KST 날짜의 첫 관련 요청에서 닫고 사유 저장 | T29–T32 |
 
 런타임 패키지 감사(`npm audit --omit=dev`)는 0건이다. 전체 개발 도구 감사에는 `picomatch`의 개발 의존성 경로 경고가 남아 있어 `docs/verification.md`에 기록했다. 로그인 반복 시도 제한, 관리자 화면, 알림·채팅·결제는 미구현이다.
 
@@ -372,6 +386,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 | 시연 영상 미제출 | 영상 촬영 및 링크 미완료 | 시연 점수 증거 없음 | 1~3분 촬영, 링크 접근 권한 확인 |
 | 만료 토큰 시간 경과 테스트 미실행 | 실제 2시간을 기다리는 테스트는 자동화하지 않음 | JWT 만료 설정은 있지만 시계 경계 테스트 근거 제한 | 짧은 TTL 테스트 설정으로 별도 검증 가능 |
 | 멤버 탈퇴 롤백 주입 미실행 | 탈퇴 트랜잭션 중 오류 주입 테스트 부재 | 정상 탈퇴 및 담당자 NULL은 확인했으나 전체 롤백은 별도 미검증 | 실패 지점 주입 테스트 추가 |
+| FULL 마감 뒤 마지막 멤버 탈퇴 | 정원 마감된 스터디에서 유일한 승인 멤버가 시작 전 탈퇴 | 자동 재개하지 않으므로 남은 멤버가 없어 시작 불가 | 자동 재개·재모집 기능은 범위 밖; 필요한 경우 별도 상태 전이 설계 |
 | 동시성 부하 한계 | `node:sqlite` 동기식, 단일 프로세스 `Promise.all` 테스트 | 여러 서버 프로세스·실제 동시 부하를 대표하지 않음 | 다중 프로세스 통합 부하 테스트 수행 |
 | 기존 비밀번호 호환성 | 이전 가입 규칙으로 UTF-8 72바이트를 넘긴 bcrypt 입력 | bcrypt 잘림 특성 때문에 전체 기존 입력 로그인이 실패할 수 있음 | 비밀번호 변경·재설정 기능 추가 |
 | 로그인 시도 제한 없음 | 같은 계정에 반복 실패 요청 | 무차별 대입 방어가 별도로 없음 | 로그인 속도 제한 도입 |
@@ -380,7 +395,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 ## 12. 제출 전 최종 확인
 
 - [x] JCloud 공개 주소와 health 확인, systemd 서비스 실행
-- [x] 2026-11-20 자동 테스트 33개 통과, 런타임 감사 0건 기록
+- [x] 2026-11-23 로컬 작업본 자동 테스트 39개 통과 기록
 - [x] README에 설치·실행, 환경변수, 초기화, 시연 데이터 복원, 테스트 절차 기재
 - [x] `docs/report.md`와 저장소 PDF를 같은 보고서 내용으로 관리
 - [x] 이전 과제 코드 참고 범위와 AI 활용·출처 기록
