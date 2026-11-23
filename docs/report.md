@@ -3,7 +3,7 @@
 웹서비스설계 한국어 분반 · 2026학년도 2학기 · 개인 프로젝트
 작성 기준일: 2026-11-23 · 제출 마감: 2026-12-18 23:59 (한국 시간)
 
-> 이 보고서는 StudyBoard 코드 변경과 2026-11-23 자동 테스트 기록을 기준으로 갱신했다. 아직 배포하지 않은 코드의 JCloud 동작과 캡처·영상처럼 확인하지 않은 항목은 미확인으로 표시했다. 비밀번호와 비밀키는 기록하지 않았다.
+> 이 보고서는 2026-11-23 배포 코드와 자동 테스트 기록을 기준으로 갱신했다. 배포 서버 테스트·health·공개 API 응답은 확인했으며, 이번 화면 변경 후 브라우저 캡처·휴대폰 전체 흐름·영상처럼 직접 확인하지 않은 항목은 미확인으로 표시했다. 비밀번호와 비밀키는 기록하지 않았다.
 
 ## 0. 제출 정보와 채점기준 대응표
 
@@ -13,7 +13,7 @@
 | 서비스명 | StudyBoard (스터디 모집·관리 서비스) |
 | 기술 조합과 버전 | Node.js 24.x, Express 5, SQLite (`node:sqlite`), JWT, bcryptjs, HTML/CSS/JavaScript, Vitest 5.1.0 + Supertest |
 | GitHub URL | https://github.com/skfls0721/study-recruitment-management |
-| 코드 기준 SHA | `1cb71dd9324c7da1388b5a73db587de5a4d87772` (기능 구현 커밋; LMS에는 문서를 포함한 최종 `main` SHA를 기재) |
+| JCloud 기능 배포 SHA | `44dab50bff1e9044f6fdf6cf8e49d4ad5caca4da` (LMS에는 문서 변경을 포함한 최종 `main` SHA를 기재) |
 | JCloud 접속 주소 | http://s.jedutools.io:40141 |
 | 시연 영상 링크 | 미제출. 촬영·공개 링크 설정 후 LMS에 기재 |
 | 역할별 테스트 계정 | `leaderA`, `leaderB`, `memberC`; 비밀번호는 LMS 제출란에서만 제공 |
@@ -235,7 +235,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 
 ## 4. 테스트 결과
 
-실행 환경은 Node.js 24.x, Vitest 5.1.0, Supertest, 메모리 SQLite다. 2026-11-23 작업본에서 `npm test`를 실행해 **39개 모두 통과**했다. 이번 변경은 아직 JCloud에 배포하지 않았으므로 새 코드의 배포 결과로 해석하지 않는다. `npm audit --omit=dev`의 기존 결과는 취약점 0건이다. 아래는 자동화 범위를 기준으로 정리했으며 “미실행”은 실패가 아니라 해당 시나리오를 별도 테스트로 입증하지 않았다는 뜻이다.
+실행 환경은 Node.js 24.x, Vitest 5.1.0, Supertest, 메모리 SQLite다. 2026-11-23 로컬과 JCloud에서 `npm test`를 실행해 **39개 모두 통과**했다. JCloud 서버에서 기능 배포 SHA `44dab50bff1e9044f6fdf6cf8e49d4ad5caca4da`를 확인했고, 서비스 재시작 후 health와 공개 API도 응답했다. 이번 기능 변경 후 로그인·화면의 브라우저 캡처와 휴대폰 데이터망 전체 흐름은 아직 별도 확인하지 않았다. `npm audit --omit=dev`의 기존 결과는 취약점 0건이다. 아래는 자동화 범위를 기준으로 정리했으며 “미실행”은 실패가 아니라 해당 시나리오를 별도 테스트로 입증하지 않았다는 뜻이다.
 
 ### 4.1 정상·인증·권한 (T01–T08)
 
@@ -340,6 +340,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 | DB 경로 | `/home/ubuntu/study-recruitment-management/data/studyboard.sqlite` |
 | 환경변수 | `PORT`, `JWT_SECRET`, `DB_PATH`, 선택 `DEMO_PASSWORD`; 실제 비밀 값은 저장소에 없음 |
 | 재시작 확인 | `/api/health`가 `{"status":"ok"}`; 공개 루트 HTTP 200; 서비스 active |
+| 코드·테스트 확인 | 기능 배포 SHA `44dab50bff1e9044f6fdf6cf8e49d4ad5caca4da`; 서버에서 `npm test` 39개 통과 |
 | 역할 계정·시연 자료 | `leaderA`, `leaderB`, `memberC`; 정원 초과 대기 지원 2건 시연 데이터 준비 |
 | 다른 네트워크·모바일 데이터 | 미확인. 제출 전 사용자 실기기에서 확인 필요 |
 | 개발자 도구 Network 캡처 | 미첨부. 화면에서 같은 origin 상대경로 `/api/...`를 사용하도록 구현됨 |
@@ -395,7 +396,7 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 ## 12. 제출 전 최종 확인
 
 - [x] JCloud 공개 주소와 health 확인, systemd 서비스 실행
-- [x] 2026-11-23 로컬 작업본 자동 테스트 39개 통과 기록
+- [x] 2026-11-23 로컬 및 JCloud 자동 테스트 각 39개 통과, 기능 배포 SHA 확인
 - [x] README에 설치·실행, 환경변수, 초기화, 시연 데이터 복원, 테스트 절차 기재
 - [x] `docs/report.md`와 저장소 PDF를 같은 보고서 내용으로 관리
 - [x] 이전 과제 코드 참고 범위와 AI 활용·출처 기록
@@ -408,4 +409,4 @@ updateTask(user,id,status) {const t=repo.task(id);if(!t)throw missing('작업');
 
 최종 제출 전 자동 테스트와 보고서의 실제 결과를 다시 확인한다. LMS에 기재할 SHA는 이 보고서 전용 변경을 포함해 마지막으로 push한 커밋에서 복사한다.
 
-이 보고서 편집에서 확인한 내용은 `docs/verification.md`의 테스트 결과와 2026-11-20 JCloud 상태 기록을 사용했다. 브라우저 캡처와 영상 URL은 제공되지 않아 미완료로 표시했다.
+이 보고서 편집에서는 `docs/verification.md`의 테스트 결과와 2026-11-23 JCloud 배포 기록을 대조했다. 브라우저 캡처와 영상 URL은 아직 제공되지 않아 미완료로 표시했다.

@@ -1,6 +1,6 @@
 # 검증 기록
 
-최종 코드 확인일: 2026-11-20
+최종 코드 확인일: 2026-11-23
 
 ## 자동 테스트
 
@@ -89,4 +89,4 @@
 
 ## JCloud 확인
 
-2026-11-20 서버에서 확인한 기존 배포 증거는 [`docs/jcloud-deployment.md`](jcloud-deployment.md)에 정리되어 있습니다. 이 변경은 2026-11-23 기준 로컬 작업본의 테스트 결과이며, 아직 JCloud에 배포된 것으로 간주하지 않습니다. 배포 후 서비스 SHA, 39개 테스트, `/api/health`, 모바일 데이터망의 작업 보드까지 다시 확인해야 합니다.
+2026-11-23 JCloud에 기능 배포 SHA `44dab50bff1e9044f6fdf6cf8e49d4ad5caca4da`를 배포하고 서버에서 `npm test` 39개 통과, systemd active, `/api/health` 응답과 공개 모집글 API 응답을 확인했습니다. 이 결과는 자동 테스트와 API 수준의 증거입니다. 기능 변경 후의 브라우저 로그인·작업 보드 캡처, 실제 휴대폰 데이터망 전체 흐름은 아직 미확인입니다. 서버 커밋과 배포 절차는 [`docs/jcloud-deployment.md`](jcloud-deployment.md)에 기록했습니다.
