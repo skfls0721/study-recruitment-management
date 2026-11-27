@@ -454,7 +454,7 @@ async function openStudy(id) {
       </article>
       ${actionPanel}
       ${own ? `<section class="card applicationsPanel"><div class="panelHeading"><div><p class="eyebrow">지원 현황</p><h2>지원자 관리</h2></div><span>${applications.length}명</span></div>
-        ${study.status === 'CLOSED' && applications.some(application => application.status === 'PENDING') ? `<p class="capacityNotice" role="status">${esc(studyStatusText(study))} 상태입니다. 남은 대기 지원은 승인할 수 없으며 스터디 시작 시 거절 처리됩니다.</p>` : study.member_count >= study.capacity ? '<p class="capacityNotice" role="status">정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.</p>' : ''}
+        ${study.status === 'CLOSED' && applications.some(application => application.status === 'PENDING') ? `<p class="capacityNotice" role="status">${esc(studyStatusText(study))} 상태입니다. 남은 대기 지원은 승인할 수 없으며 스터디 시작 시 거절 처리됩니다.</p>` : study.close_reason === 'FULL' ? '<p class="capacityNotice" role="status">정원이 모두 찼습니다. 남은 대기 지원서는 거절 처리되었습니다.</p>' : study.member_count >= study.capacity ? '<p class="capacityNotice" role="status">정원이 모두 찼습니다. 더 이상 승인할 수 없습니다.</p>' : ''}
         ${applications.length ? `<div class="applicationList">${applicationRows}</div>` : '<div class="emptyState compactEmpty">아직 지원자가 없습니다.</div>'}
       </section>` : ''}`;
 
